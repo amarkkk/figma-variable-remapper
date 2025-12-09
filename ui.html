@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Variable Remapper</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg-primary: #ffffff; --bg-secondary: #f5f5f5; --bg-tertiary: #e5e5e5;
+      --bg-hover: #f0f0f0; --bg-active: #e5e5e5;
+      --text-primary: #000000; --text-secondary: #333333; --text-tertiary: #666666; --text-disabled: #999999;
+      --border-strong: #d4d4d4; --border-medium: #e5e5e5; --border-subtle: #f0f0f0;
+      --accent-primary: #18a0fb; --accent-hover: #0d8ce8; --accent-active: #0b7cd6;
+      --success-bg: #d4edda; --success-text: #155724; --success-border: #c3e6cb;
+      --warning-bg: #fff3cd; --warning-text: #856404; --warning-border: #ffc107;
+      --error-bg: #f8d7da; --error-text: #721c24; --error-border: #f5c6cb;
+    }
+    [data-theme="dark"] {
+      --bg-primary: #1e1e1e; --bg-secondary: #2c2c2c; --bg-tertiary: #3c3c3c;
+      --bg-hover: #383838; --bg-active: #444444;
+      --text-primary: #ffffff; --text-secondary: #e5e5e5; --text-tertiary: #b3b3b3; --text-disabled: #7a7a7a;
+      --border-strong: #5a5a5a; --border-medium: #3c3c3c; --border-subtle: #2c2c2c;
+      --accent-primary: #18a0fb; --accent-hover: #3db0ff; --accent-active: #0d8ce8;
+      --success-bg: #1a3d28; --success-text: #4ade80; --success-border: #2d5a3d;
+      --warning-bg: #3d3520; --warning-text: #fbbf24; --warning-border: #5a4d2d;
+      --error-bg: #3d1a1a; --error-text: #f87171; --error-border: #5a2d2d;
+    }
+    body { font-family: 'Inter', -apple-system, sans-serif; font-size: 12px; color: var(--text-secondary); background: var(--bg-primary); overflow: hidden; }
+    .container { display: flex; flex-direction: column; height: 100vh; padding: 12px; }
+    .find-replace-section { background: var(--bg-secondary); border: 1px solid var(--border-medium); border-radius: 6px; padding: 12px; margin-bottom: 12px; }
+    .find-replace-row { display: flex; gap: 8px; align-items: center; margin-bottom: 8px; }
+    .find-replace-row:last-child { margin-bottom: 0; }
+    .input-group { display: flex; align-items: center; gap: 6px; flex: 1; }
+    .input-group label { font-size: 11px; font-weight: 600; color: var(--text-tertiary); min-width: 50px; }
+    .input-group input[type="text"] { flex: 1; padding: 6px 10px; border: 1px solid var(--border-strong); border-radius: 4px; font-size: 12px; background: var(--bg-primary); color: var(--text-secondary); }
+    .input-group input[type="text"]:focus { outline: none; border-color: var(--accent-primary); }
+    .options-row { display: flex; gap: 16px; align-items: center; }
+    .checkbox-label { display: flex; align-items: center; gap: 6px; cursor: pointer; font-size: 11px; color: var(--text-tertiary); }
+    .checkbox-label input[type="checkbox"] { cursor: pointer; }
+    .btn { padding: 6px 12px; border: 1px solid var(--border-strong); border-radius: 4px; font-size: 12px; font-weight: 500; cursor: pointer; background: var(--bg-secondary); color: var(--text-secondary); transition: all 0.15s ease; }
+    .btn:hover { background: var(--bg-hover); }
+    .btn-primary { background: var(--accent-primary); color: white; border-color: var(--accent-primary); }
+    .btn-primary:hover { background: var(--accent-hover); }
+    .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
+    .btn-apply-find-replace { padding: 6px 16px; }
+    .main-content { flex: 1; display: flex; flex-direction: column; overflow: hidden; border: 1px solid var(--border-medium); border-radius: 6px; background: var(--bg-primary); }
+    .columns-header { display: grid; grid-template-columns: 1fr 1fr; background: var(--bg-secondary); border-bottom: 1px solid var(--border-medium); font-size: 11px; font-weight: 600; color: var(--text-tertiary); text-transform: uppercase; letter-spacing: 0.5px; }
+    .columns-header > div { padding: 8px 12px; }
+    .columns-header > div:first-child { border-right: 1px solid var(--border-medium); }
+    .property-groups { flex: 1; overflow-y: auto; }
+    .property-group { border-bottom: 1px solid var(--border-medium); }
+    .property-group:last-child { border-bottom: none; }
+    .property-group-header { display: flex; align-items: center; justify-content: space-between; padding: 8px 12px; background: var(--bg-secondary); cursor: pointer; user-select: none; }
+    .property-group-header:hover { background: var(--bg-hover); }
+    .property-group-header-left { display: flex; align-items: center; gap: 8px; }
+    .property-group-toggle { font-size: 10px; color: var(--text-tertiary); width: 16px; }
+    .property-group-title { font-weight: 600; font-size: 12px; color: var(--text-primary); }
+    .property-group-count { font-size: 11px; color: var(--text-tertiary); font-weight: 400; }
+    .select-all-btn { font-size: 10px; padding: 2px 6px; background: transparent; border: 1px solid var(--border-strong); border-radius: 3px; cursor: pointer; color: var(--text-tertiary); }
+    .select-all-btn:hover { background: var(--bg-hover); color: var(--text-secondary); }
+    .property-group-items { display: none; }
+    .property-group-items.expanded { display: block; }
+    .binding-row { display: grid; grid-template-columns: 1fr 1fr; border-bottom: 1px solid var(--border-subtle); }
+    .binding-row:last-child { border-bottom: none; }
+    .binding-row:hover { background: var(--bg-hover); }
+    .binding-cell { padding: 8px 12px; display: flex; align-items: center; gap: 8px; font-size: 11px; font-family: 'SF Mono', 'Monaco', monospace; }
+    .binding-cell:first-child { border-right: 1px solid var(--border-subtle); }
+    .binding-checkbox { cursor: pointer; }
+    .binding-name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--text-secondary); }
+    .binding-preview { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .status-found { color: var(--success-text); }
+    .status-not-found { color: var(--error-text); }
+    .status-unchanged { color: var(--text-disabled); font-style: italic; }
+    .status-icon { font-size: 12px; }
+    .nested-instances-section { padding: 8px 12px; background: var(--warning-bg); border-top: 1px solid var(--warning-border); font-size: 11px; color: var(--warning-text); }
+    .nested-instances-section.hidden { display: none; }
+    .nested-instances-title { font-weight: 600; margin-bottom: 4px; }
+    .nested-instance-item { padding: 2px 0; }
+    .footer { display: flex; justify-content: space-between; align-items: center; padding-top: 12px; margin-top: 12px; border-top: 1px solid var(--border-medium); }
+    .footer-left { display: flex; align-items: center; gap: 8px; }
+    .footer-stats { font-size: 11px; color: var(--text-tertiary); }
+    .footer-warning { font-size: 11px; color: var(--warning-text); }
+    .footer-warning.hidden { display: none; }
+    .icon-button { width: 28px; height: 28px; display: flex; align-items: center; justify-content: center; background: transparent; border: none; border-radius: 4px; cursor: pointer; color: var(--text-tertiary); }
+    .icon-button:hover { background: var(--bg-hover); color: var(--text-secondary); }
+    .empty-state { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; color: var(--text-disabled); padding: 40px; text-align: center; }
+    .empty-state-icon { font-size: 48px; margin-bottom: 12px; opacity: 0.5; }
+    .empty-state-title { font-size: 14px; font-weight: 600; margin-bottom: 4px; color: var(--text-tertiary); }
+    .empty-state-desc { font-size: 12px; }
+    .dialog-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; z-index: 1000; }
+    .dialog-overlay.hidden { display: none; }
+    .dialog-box { background: var(--bg-primary); border-radius: 8px; padding: 20px; max-width: 360px; border: 1px solid var(--border-medium); }
+    .dialog-title { font-size: 14px; font-weight: 600; margin-bottom: 8px; color: var(--text-primary); }
+    .dialog-message { font-size: 12px; color: var(--text-secondary); margin-bottom: 16px; line-height: 1.5; }
+    .dialog-actions { display: flex; gap: 8px; justify-content: flex-end; }
+    #resize-corner { position: absolute; right: 4px; bottom: 4px; cursor: nwse-resize; z-index: 10000; opacity: 0.4; color: var(--text-tertiary); }
+    #resize-corner:hover { opacity: 0.8; }
+    .property-groups::-webkit-scrollbar { width: 8px; }
+    .property-groups::-webkit-scrollbar-track { background: var(--bg-secondary); }
+    .property-groups::-webkit-scrollbar-thumb { background: var(--border-strong); border-radius: 4px; }
+    .property-groups::-webkit-scrollbar-thumb:hover { background: var(--text-tertiary); }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="find-replace-section">
+      <div class="find-replace-row">
+        <div class="input-group"><label for="find-input">Find:</label><input type="text" id="find-input" placeholder="e.g. brand"></div>
+        <div class="input-group"><label for="replace-input">Replace:</label><input type="text" id="replace-input" placeholder="e.g. neutral"></div>
+        <button class="btn btn-apply-find-replace" id="apply-find-replace-btn">▶ Apply</button>
+      </div>
+      <div class="find-replace-row options-row">
+        <label class="checkbox-label"><input type="checkbox" id="whole-segment-checkbox" checked><span>Whole segment only</span></label>
+        <label class="checkbox-label"><input type="checkbox" id="case-sensitive-checkbox" checked><span>Case sensitive</span></label>
+      </div>
+    </div>
+    <div class="main-content" id="main-content">
+      <div class="columns-header"><div>Current</div><div>Remapped To</div></div>
+      <div class="property-groups" id="property-groups">
+        <div class="empty-state" id="empty-state">
+          <div class="empty-state-icon">🎯</div>
+          <div class="empty-state-title">Select a component</div>
+          <div class="empty-state-desc">Select one or more components to scan their bound variables</div>
+        </div>
+      </div>
+      <div class="nested-instances-section hidden" id="nested-instances-section">
+        <div class="nested-instances-title">ℹ️ Nested instances (edit at component source)</div>
+        <div id="nested-instances-list"></div>
+      </div>
+    </div>
+    <div class="footer">
+      <div class="footer-left">
+        <button class="icon-button" id="theme-toggle" title="Toggle theme">
+          <svg id="sun-icon" xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="currentColor" viewBox="0 0 256 256"><path d="M120,40V16a8,8,0,0,1,16,0V40a8,8,0,0,1-16,0Zm72,88a64,64,0,1,1-64-64A64.07,64.07,0,0,1,192,128Zm-16,0a48,48,0,1,0-48,48A48.05,48.05,0,0,0,176,128ZM58.34,69.66A8,8,0,0,0,69.66,58.34l-16-16A8,8,0,0,0,42.34,53.66Zm0,116.68-16,16a8,8,0,0,0,11.32,11.32l16-16a8,8,0,0,0-11.32-11.32ZM192,72a8,8,0,0,0,5.66-2.34l16-16a8,8,0,0,0-11.32-11.32l-16,16A8,8,0,0,0,192,72Zm5.66,114.34a8,8,0,0,0-11.32,11.32l16,16a8,8,0,0,0,11.32-11.32ZM48,128a8,8,0,0,0-8-8H16a8,8,0,0,0,0,16H40A8,8,0,0,0,48,128Zm80,80a8,8,0,0,0-8,8v24a8,8,0,0,0,16,0V216A8,8,0,0,0,128,208Zm112-88H216a8,8,0,0,0,0,16h24a8,8,0,0,0,0-16Z"></path></svg>
+          <svg id="moon-icon" xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="currentColor" viewBox="0 0 256 256" style="display:none;"><path d="M233.54,142.23a8,8,0,0,0-8-2,88.08,88.08,0,0,1-109.8-109.8,8,8,0,0,0-10-10,104.84,104.84,0,0,0-52.91,37A104,104,0,0,0,136,224a103.09,103.09,0,0,0,62.52-20.88,104.84,104.84,0,0,0,37-52.91A8,8,0,0,0,233.54,142.23ZM188.9,190.34A88,88,0,0,1,65.66,67.11a89,89,0,0,1,31.4-26A106,106,0,0,0,96,56,104.11,104.11,0,0,0,200,160a106,106,0,0,0,14.92-1.06A89,89,0,0,1,188.9,190.34Z"></path></svg>
+        </button>
+        <span class="footer-stats" id="footer-stats">0 variables selected</span>
+        <span class="footer-warning hidden" id="footer-warning">⚠ 0 targets not found</span>
+      </div>
+      <button class="btn btn-primary" id="apply-changes-btn" disabled>Apply 0 Changes</button>
+    </div>
+  </div>
+  <div class="dialog-overlay hidden" id="unsaved-dialog">
+    <div class="dialog-box">
+      <div class="dialog-title">Unsaved Changes</div>
+      <div class="dialog-message">You have unsaved remapping changes. Selecting a new element will discard them.</div>
+      <div class="dialog-actions"><button class="btn" id="dialog-stay">Stay</button><button class="btn btn-primary" id="dialog-proceed">Proceed</button></div>
+    </div>
+  </div>
+  <svg id="resize-corner" xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 256 256"><path d="M213.66,133.66l-80,80a8,8,0,0,1-11.32-11.32l80-80a8,8,0,0,1,11.32,11.32Zm-16-99.32a8,8,0,0,0-11.32,0l-152,152a8,8,0,0,0,11.32,11.32l152-152A8,8,0,0,0,197.66,34.34Z"></path></svg>
+  <script>
+    let currentBindings = [], selectedBindingKeys = new Set(), previewResults = new Map(), nestedInstances = [], hasUnsavedChanges = false, pendingSelectionChange = false, currentTheme = 'light';
+    const findInput = document.getElementById('find-input'), replaceInput = document.getElementById('replace-input'), applyFindReplaceBtn = document.getElementById('apply-find-replace-btn'), wholeSegmentCheckbox = document.getElementById('whole-segment-checkbox'), caseSensitiveCheckbox = document.getElementById('case-sensitive-checkbox'), propertyGroupsContainer = document.getElementById('property-groups'), emptyState = document.getElementById('empty-state'), nestedInstancesSection = document.getElementById('nested-instances-section'), nestedInstancesList = document.getElementById('nested-instances-list'), footerStats = document.getElementById('footer-stats'), footerWarning = document.getElementById('footer-warning'), applyChangesBtn = document.getElementById('apply-changes-btn'), themeToggle = document.getElementById('theme-toggle'), sunIcon = document.getElementById('sun-icon'), moonIcon = document.getElementById('moon-icon'), unsavedDialog = document.getElementById('unsaved-dialog'), dialogStay = document.getElementById('dialog-stay'), dialogProceed = document.getElementById('dialog-proceed');
+    function init() { setupEventListeners(); setupResizeHandle(); }
+    function setupEventListeners() {
+      applyFindReplaceBtn.addEventListener('click', applyFindReplace);
+      findInput.addEventListener('keyup', (e) => { if (e.key === 'Enter') applyFindReplace(); });
+      replaceInput.addEventListener('keyup', (e) => { if (e.key === 'Enter') applyFindReplace(); });
+      applyChangesBtn.addEventListener('click', applyChanges);
+      themeToggle.addEventListener('click', toggleTheme);
+      dialogStay.addEventListener('click', () => { unsavedDialog.classList.add('hidden'); pendingSelectionChange = false; });
+      dialogProceed.addEventListener('click', () => { unsavedDialog.classList.add('hidden'); hasUnsavedChanges = false; previewResults.clear(); pendingSelectionChange = false; parent.postMessage({ pluginMessage: { type: 'scan-selection' } }, '*'); });
+    }
+    function setupResizeHandle() {
+      const corner = document.getElementById('resize-corner');
+      if (!corner) return;
+      const resizeWindow = (e) => { parent.postMessage({ pluginMessage: { type: 'resize', size: { w: Math.max(500, Math.floor(e.clientX + 5)), h: Math.max(400, Math.floor(e.clientY + 5)) } } }, '*'); };
+      corner.addEventListener('pointerdown', (e) => { corner.onpointermove = resizeWindow; corner.setPointerCapture(e.pointerId); });
+      corner.addEventListener('pointerup', (e) => { corner.onpointermove = null; corner.releasePointerCapture(e.pointerId); });
+    }
+    function toggleTheme() { currentTheme = currentTheme === 'light' ? 'dark' : 'light'; document.documentElement.setAttribute('data-theme', currentTheme); sunIcon.style.display = currentTheme === 'dark' ? 'none' : 'block'; moonIcon.style.display = currentTheme === 'dark' ? 'block' : 'none'; }
+    window.onmessage = (event) => {
+      const msg = event.data.pluginMessage;
+      if (!msg) return;
+      switch (msg.type) {
+        case 'scan-complete': handleScanComplete(msg.result); break;
+        case 'selection-changed': handleSelectionChange(msg.hasSelection); break;
+        case 'preview-result': handlePreviewResult(msg.previews); break;
+        case 'apply-complete': handleApplyComplete(msg.result); break;
+        case 'error': console.error('Plugin error:', msg.message); break;
+      }
+    };
+    function handleScanComplete(result) {
+      currentBindings = result.bindings; nestedInstances = result.nestedInstances; selectedBindingKeys.clear(); previewResults.clear(); hasUnsavedChanges = false;
+      currentBindings.forEach(b => { if (!b.isNestedInstance) selectedBindingKeys.add(getBindingKey(b)); });
+      renderBindings(); renderNestedInstances(); updateFooter();
+    }
+    function handleSelectionChange(hasSelection) { if (hasUnsavedChanges && hasSelection) { pendingSelectionChange = true; unsavedDialog.classList.remove('hidden'); } else { parent.postMessage({ pluginMessage: { type: 'scan-selection' } }, '*'); } }
+    function handlePreviewResult(previews) { previewResults.clear(); previews.forEach(p => previewResults.set(getBindingKey(p.binding), p)); hasUnsavedChanges = previews.some(p => p.status === 'found'); renderBindings(); updateFooter(); }
+    function handleApplyComplete(result) { hasUnsavedChanges = false; previewResults.clear(); findInput.value = ''; replaceInput.value = ''; }
+    function applyFindReplace() {
+      const findText = findInput.value.trim(), replaceText = replaceInput.value.trim();
+      if (!findText) return;
+      parent.postMessage({ pluginMessage: { type: 'preview-remap', findText, replaceText, options: { wholeSegment: wholeSegmentCheckbox.checked, caseSensitive: caseSensitiveCheckbox.checked }, selectedBindings: currentBindings.filter(b => selectedBindingKeys.has(getBindingKey(b))) } }, '*');
+    }
+    function applyChanges() {
+      const remaps = [];
+      for (const [key, preview] of previewResults.entries()) { if (preview.status === 'found' && selectedBindingKeys.has(key)) { remaps.push({ nodeId: preview.binding.nodeId, propertyKey: preview.binding.propertyKey, propertyType: preview.binding.propertyType, oldVariableId: preview.binding.variableId, newVariableId: preview.newVariableId }); } }
+      if (remaps.length === 0) return;
+      parent.postMessage({ pluginMessage: { type: 'apply-remap', remaps } }, '*');
+    }
+    function renderBindings() {
+      if (currentBindings.length === 0) { emptyState.style.display = 'flex'; propertyGroupsContainer.innerHTML = ''; propertyGroupsContainer.appendChild(emptyState); return; }
+      emptyState.style.display = 'none';
+      const groups = { color: { label: 'Colors', items: [] }, spacing: { label: 'Spacing', items: [] }, cornerRadius: { label: 'Corner Radius', items: [] }, typography: { label: 'Typography', items: [] }, other: { label: 'Other', items: [] } };
+      currentBindings.forEach(b => { if (!b.isNestedInstance) groups[b.propertyType].items.push(b); });
+      let html = '';
+      for (const [type, group] of Object.entries(groups)) {
+        if (group.items.length === 0) continue;
+        html += `<div class="property-group" data-type="${type}"><div class="property-group-header" onclick="toggleGroup('${type}')"><div class="property-group-header-left"><span class="property-group-toggle" id="toggle-${type}">▼</span><span class="property-group-title">${group.label}</span><span class="property-group-count">(${group.items.length})</span></div><button class="select-all-btn" onclick="event.stopPropagation(); toggleSelectAll('${type}')">Select All</button></div><div class="property-group-items expanded" id="items-${type}">`;
+        group.items.forEach(binding => {
+          const key = getBindingKey(binding), isSelected = selectedBindingKeys.has(key), preview = previewResults.get(key);
+          let previewHtml = '<span class="status-unchanged">(no change)</span>', statusIcon = '';
+          if (preview) { if (preview.status === 'found') { previewHtml = `<span class="status-found">${preview.newVariableName}</span>`; statusIcon = '<span class="status-icon">✓</span>'; } else if (preview.status === 'not_found') { previewHtml = `<span class="status-not-found">${preview.newVariableName}</span>`; statusIcon = '<span class="status-icon">⚠</span>'; } }
+          html += `<div class="binding-row"><div class="binding-cell"><input type="checkbox" class="binding-checkbox" data-key="${key}" ${isSelected ? 'checked' : ''} onchange="toggleBinding('${key}')"><span class="binding-name" title="${binding.variableName}">${binding.variableName}</span></div><div class="binding-cell"><span class="binding-preview">${previewHtml}</span>${statusIcon}</div></div>`;
+        });
+        html += '</div></div>';
+      }
+      propertyGroupsContainer.innerHTML = html;
+    }
+    function renderNestedInstances() { if (nestedInstances.length === 0) { nestedInstancesSection.classList.add('hidden'); return; } nestedInstancesSection.classList.remove('hidden'); nestedInstancesList.innerHTML = nestedInstances.map(ni => `<div class="nested-instance-item">• ${ni.nodeName} → ${ni.mainComponentName} (${ni.boundVariableCount} variables)</div>`).join(''); }
+    function updateFooter() {
+      footerStats.textContent = `${selectedBindingKeys.size} variable${selectedBindingKeys.size !== 1 ? 's' : ''} selected`;
+      let notFoundCount = 0, foundCount = 0;
+      for (const [key, preview] of previewResults.entries()) { if (selectedBindingKeys.has(key)) { if (preview.status === 'not_found') notFoundCount++; if (preview.status === 'found') foundCount++; } }
+      if (notFoundCount > 0) { footerWarning.textContent = `⚠ ${notFoundCount} target${notFoundCount !== 1 ? 's' : ''} not found`; footerWarning.classList.remove('hidden'); } else { footerWarning.classList.add('hidden'); }
+      applyChangesBtn.disabled = foundCount === 0; applyChangesBtn.textContent = `Apply ${foundCount} Change${foundCount !== 1 ? 's' : ''}`;
+    }
+    function getBindingKey(binding) { return `${binding.nodeId}:${binding.propertyKey}:${binding.variableId}`; }
+    window.toggleGroup = function(type) { const items = document.getElementById(`items-${type}`), toggle = document.getElementById(`toggle-${type}`); if (items.classList.contains('expanded')) { items.classList.remove('expanded'); toggle.textContent = '▶'; } else { items.classList.add('expanded'); toggle.textContent = '▼'; } };
+    window.toggleSelectAll = function(type) { const group = currentBindings.filter(b => b.propertyType === type && !b.isNestedInstance), allSelected = group.every(b => selectedBindingKeys.has(getBindingKey(b))); group.forEach(b => { const key = getBindingKey(b); if (allSelected) selectedBindingKeys.delete(key); else selectedBindingKeys.add(key); }); renderBindings(); updateFooter(); };
+    window.toggleBinding = function(key) { if (selectedBindingKeys.has(key)) selectedBindingKeys.delete(key); else selectedBindingKeys.add(key); updateFooter(); };
+    init();
+  </script>
+</body>
+</html>
