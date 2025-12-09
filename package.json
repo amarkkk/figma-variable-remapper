@@ -1,0 +1,23 @@
+{
+  "name": "figma-variable-remapper",
+  "version": "1.0.0",
+  "description": "Bulk reassign Figma variables using find-and-replace on variable paths",
+  "main": "code.js",
+  "scripts": {
+    "build": "tsc",
+    "watch": "tsc --watch"
+  },
+  "keywords": [
+    "figma",
+    "plugin",
+    "variables",
+    "design-tokens",
+    "remapper"
+  ],
+  "author": "",
+  "license": "MIT",
+  "devDependencies": {
+    "@figma/plugin-typings": "^1.98.0",
+    "typescript": "^5.3.0"
+  }
+}
