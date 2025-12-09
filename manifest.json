@@ -1,0 +1,14 @@
+{
+  "name": "Variable Remapper",
+  "id": "variable-remapper",
+  "api": "1.0.0",
+  "main": "code.js",
+  "ui": "ui.html",
+  "editorType": ["figma"],
+  "capabilities": [],
+  "enableProposedApi": false,
+  "permissions": [],
+  "networkAccess": {
+    "allowedDomains": []
+  }
+}
