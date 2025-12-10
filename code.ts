@@ -6,23 +6,22 @@
 // ============================================================================
 
 interface BoundVariableInfo {
-  nodeId: string;
-  nodeName: string;
   propertyType: PropertyType;
   propertyKey: string;
   variableId: string;
   variableName: string;
   collectionId: string;
   collectionName: string;
-  isNestedInstance: boolean;
-  instancePath?: string; // e.g., "IconButton > Icon"
+  nodeCount: number; // How many nodes use this binding
+  nodeIds: string[]; // List of node IDs that use this binding
 }
 
-type PropertyType = 'color' | 'spacing' | 'cornerRadius' | 'typography' | 'other';
+type PropertyType = 'fill' | 'stroke' | 'effect' | 'text' | 'spacing' | 'cornerRadius' | 'typography' | 'other';
 
 interface ScanResult {
   bindings: BoundVariableInfo[];
   nestedInstances: NestedInstanceInfo[];
+  totalNodes: number;
 }
 
 interface NestedInstanceInfo {
@@ -34,17 +33,17 @@ interface NestedInstanceInfo {
 
 interface RemapPreview {
   binding: BoundVariableInfo;
-  newVariableName: string | null; // null if target not found
+  newVariableName: string | null;
   newVariableId: string | null;
   status: 'found' | 'not_found' | 'unchanged';
 }
 
 interface RemapRequest {
-  nodeId: string;
   propertyKey: string;
   propertyType: PropertyType;
   oldVariableId: string;
   newVariableId: string;
+  nodeIds: string[];
 }
 
 // ============================================================================
@@ -58,14 +57,14 @@ figma.showUI(__html__, {
 });
 
 // Variable cache for lookups
-let variableCache: Map<string, Variable> = new Map();
-let collectionCache: Map<string, VariableCollection> = new Map();
+var variableCache: Map<string, Variable> = new Map();
+var collectionCache: Map<string, VariableCollection> = new Map();
 
 // ============================================================================
 // Message Handling
 // ============================================================================
 
-figma.ui.onmessage = async (msg) => {
+figma.ui.onmessage = async function(msg: any) {
   try {
     switch (msg.type) {
       case 'scan-selection':
@@ -78,6 +77,10 @@ figma.ui.onmessage = async (msg) => {
 
       case 'apply-remap':
         await handleApplyRemap(msg.remaps);
+        break;
+
+      case 'get-collection-variables':
+        await handleGetCollectionVariables(msg.collectionId);
         break;
 
       case 'resize':
@@ -100,7 +103,7 @@ figma.ui.onmessage = async (msg) => {
 // Selection Change Handling
 // ============================================================================
 
-figma.on('selectionchange', () => {
+figma.on('selectionchange', function() {
   figma.ui.postMessage({
     type: 'selection-changed',
     hasSelection: figma.currentPage.selection.length > 0
@@ -112,12 +115,12 @@ figma.on('selectionchange', () => {
 // ============================================================================
 
 async function handleScanSelection(): Promise<void> {
-  const selection = figma.currentPage.selection;
+  var selection = figma.currentPage.selection;
 
   if (selection.length === 0) {
     figma.ui.postMessage({
       type: 'scan-complete',
-      result: { bindings: [], nestedInstances: [] }
+      result: { bindings: [], nestedInstances: [], totalNodes: 0 }
     });
     return;
   }
@@ -125,111 +128,147 @@ async function handleScanSelection(): Promise<void> {
   // Refresh caches
   await refreshVariableCaches();
 
-  const bindings: BoundVariableInfo[] = [];
-  const nestedInstances: NestedInstanceInfo[] = [];
-  const processedNestedIds = new Set<string>();
+  // Map to aggregate bindings: key = "propertyKey:variableId"
+  var bindingMap: Map<string, BoundVariableInfo> = new Map();
+  var nestedInstances: NestedInstanceInfo[] = [];
+  var processedNestedIds: Set<string> = new Set();
+  var totalNodes = 0;
 
-  for (const node of selection) {
-    await scanNode(node, bindings, nestedInstances, processedNestedIds, false, '');
+  for (var i = 0; i < selection.length; i++) {
+    var node = selection[i];
+    totalNodes += await scanNode(node, bindingMap, nestedInstances, processedNestedIds, false);
   }
 
-  // Deduplicate bindings by unique combination
-  const uniqueBindings = deduplicateBindings(bindings);
+  // Convert map to array
+  var bindings: BoundVariableInfo[] = [];
+  bindingMap.forEach(function(value) {
+    bindings.push(value);
+  });
+
+  // Sort by property type, then by variable name
+  bindings.sort(function(a, b) {
+    if (a.propertyType !== b.propertyType) {
+      return a.propertyType.localeCompare(b.propertyType);
+    }
+    return a.variableName.localeCompare(b.variableName);
+  });
 
   figma.ui.postMessage({
     type: 'scan-complete',
     result: {
-      bindings: uniqueBindings,
-      nestedInstances
+      bindings: bindings,
+      nestedInstances: nestedInstances,
+      totalNodes: totalNodes
     }
   });
 }
 
 async function scanNode(
   node: SceneNode,
-  bindings: BoundVariableInfo[],
+  bindingMap: Map<string, BoundVariableInfo>,
   nestedInstances: NestedInstanceInfo[],
   processedNestedIds: Set<string>,
-  isNestedInstance: boolean,
-  instancePath: string
-): Promise<void> {
+  isNestedInstance: boolean
+): Promise<number> {
+  var nodeCount = 1;
+
   // Check if this is a nested instance (not the top-level selection)
   if (node.type === 'INSTANCE' && isNestedInstance) {
     if (!processedNestedIds.has(node.id)) {
       processedNestedIds.add(node.id);
 
       // Count bound variables in this instance
-      const instanceBindings: BoundVariableInfo[] = [];
-      await collectBoundVariables(node, instanceBindings, true, node.name);
+      var instanceBindings: Map<string, BoundVariableInfo> = new Map();
+      await collectBoundVariables(node, instanceBindings);
 
-      if (instanceBindings.length > 0) {
-        const mainComponent = await node.getMainComponentAsync();
+      if (instanceBindings.size > 0) {
+        var mainComponent = await node.getMainComponentAsync();
+        var mainName = 'Unknown Component';
+        if (mainComponent && mainComponent.name) {
+          mainName = mainComponent.name;
+        }
         nestedInstances.push({
           nodeId: node.id,
           nodeName: node.name,
-          mainComponentName: mainComponent?.name || 'Unknown Component',
-          boundVariableCount: instanceBindings.length
+          mainComponentName: mainName,
+          boundVariableCount: instanceBindings.size
         });
       }
     }
-    return; // Don't recurse into nested instances
+    return nodeCount; // Don't recurse into nested instances
   }
 
   // Collect bound variables from this node
-  await collectBoundVariables(node, bindings, isNestedInstance, instancePath);
+  await collectBoundVariables(node, bindingMap, node.id);
 
   // Recurse into children
   if ('children' in node) {
-    for (const child of node.children) {
-      const childIsNestedInstance = child.type === 'INSTANCE';
-      const childPath = instancePath ? `${instancePath} > ${child.name}` : child.name;
-      await scanNode(
+    var children = (node as ChildrenMixin).children;
+    for (var i = 0; i < children.length; i++) {
+      var child = children[i] as SceneNode;
+      var childIsNestedInstance = child.type === 'INSTANCE';
+      nodeCount += await scanNode(
         child,
-        bindings,
+        bindingMap,
         nestedInstances,
         processedNestedIds,
-        childIsNestedInstance || isNestedInstance,
-        childPath
+        childIsNestedInstance || isNestedInstance
       );
     }
   }
+
+  return nodeCount;
 }
 
 async function collectBoundVariables(
   node: SceneNode,
-  bindings: BoundVariableInfo[],
-  isNestedInstance: boolean,
-  instancePath: string
+  bindingMap: Map<string, BoundVariableInfo>,
+  nodeId?: string
 ): Promise<void> {
   if (!('boundVariables' in node) || !node.boundVariables) {
     return;
   }
 
-  const boundVars = node.boundVariables as Record<string, VariableAlias | VariableAlias[]>;
+  var boundVars = node.boundVariables as Record<string, VariableAlias | VariableAlias[]>;
+  var keys = Object.keys(boundVars);
 
-  for (const [key, binding] of Object.entries(boundVars)) {
+  for (var i = 0; i < keys.length; i++) {
+    var key = keys[i];
+    var binding = boundVars[key];
     if (!binding) continue;
 
-    const aliases = Array.isArray(binding) ? binding : [binding];
+    var aliases: VariableAlias[] = Array.isArray(binding) ? binding : [binding];
 
-    for (const alias of aliases) {
+    for (var j = 0; j < aliases.length; j++) {
+      var alias = aliases[j];
       if (alias && 'id' in alias) {
-        const variable = variableCache.get(alias.id);
-        const collection = variable ? collectionCache.get(variable.variableCollectionId) : null;
+        var variable = variableCache.get(alias.id);
+        var collection = variable ? collectionCache.get(variable.variableCollectionId) : null;
 
         if (variable && collection) {
-          bindings.push({
-            nodeId: node.id,
-            nodeName: node.name,
-            propertyType: categorizeProperty(key),
-            propertyKey: key,
-            variableId: variable.id,
-            variableName: variable.name,
-            collectionId: collection.id,
-            collectionName: collection.name,
-            isNestedInstance,
-            instancePath: instancePath || undefined
-          });
+          var propType = categorizeProperty(key);
+          var mapKey = propType + ':' + key + ':' + variable.id;
+
+          var existing = bindingMap.get(mapKey);
+          if (existing) {
+            // Increment count and add nodeId
+            existing.nodeCount++;
+            if (nodeId && existing.nodeIds.indexOf(nodeId) === -1) {
+              existing.nodeIds.push(nodeId);
+            }
+          } else {
+            // Create new entry
+            bindingMap.set(mapKey, {
+              propertyType: propType,
+              propertyKey: key,
+              variableId: variable.id,
+              variableName: variable.name,
+              collectionId: collection.id,
+              collectionName: collection.name,
+              nodeCount: 1,
+              nodeIds: nodeId ? [nodeId] : []
+            });
+          }
         }
       }
     }
@@ -237,26 +276,31 @@ async function collectBoundVariables(
 }
 
 function categorizeProperty(key: string): PropertyType {
-  const colorProps = ['fills', 'strokes', 'effects'];
-  const spacingProps = ['paddingLeft', 'paddingRight', 'paddingTop', 'paddingBottom', 'itemSpacing', 'counterAxisSpacing'];
-  const radiusProps = ['topLeftRadius', 'topRightRadius', 'bottomLeftRadius', 'bottomRightRadius', 'cornerRadius'];
-  const typographyProps = ['fontSize', 'fontWeight', 'lineHeight', 'letterSpacing', 'paragraphSpacing'];
-
-  if (colorProps.includes(key)) return 'color';
-  if (spacingProps.includes(key)) return 'spacing';
-  if (radiusProps.includes(key)) return 'cornerRadius';
-  if (typographyProps.includes(key)) return 'typography';
+  // Fill colors
+  if (key === 'fills') return 'fill';
+  
+  // Stroke colors
+  if (key === 'strokes') return 'stroke';
+  
+  // Effect colors (shadows, etc.)
+  if (key === 'effects') return 'effect';
+  
+  // Text colors
+  if (key === 'textFills' || key === 'textColor') return 'text';
+  
+  // Spacing
+  var spacingProps = ['paddingLeft', 'paddingRight', 'paddingTop', 'paddingBottom', 'itemSpacing', 'counterAxisSpacing'];
+  if (spacingProps.indexOf(key) !== -1) return 'spacing';
+  
+  // Corner radius
+  var radiusProps = ['topLeftRadius', 'topRightRadius', 'bottomLeftRadius', 'bottomRightRadius', 'cornerRadius'];
+  if (radiusProps.indexOf(key) !== -1) return 'cornerRadius';
+  
+  // Typography
+  var typographyProps = ['fontSize', 'fontWeight', 'lineHeight', 'letterSpacing', 'paragraphSpacing'];
+  if (typographyProps.indexOf(key) !== -1) return 'typography';
+  
   return 'other';
-}
-
-function deduplicateBindings(bindings: BoundVariableInfo[]): BoundVariableInfo[] {
-  const seen = new Set<string>();
-  return bindings.filter(b => {
-    const key = `${b.nodeId}:${b.propertyKey}:${b.variableId}`;
-    if (seen.has(key)) return false;
-    seen.add(key);
-    return true;
-  });
 }
 
 async function handlePreviewRemap(
@@ -266,26 +310,31 @@ async function handlePreviewRemap(
   selectedBindings: BoundVariableInfo[]
 ): Promise<void> {
   if (!findText) {
-    figma.ui.postMessage({
-      type: 'preview-result',
-      previews: selectedBindings.map(b => ({
-        binding: b,
+    var unchangedPreviews: RemapPreview[] = [];
+    for (var i = 0; i < selectedBindings.length; i++) {
+      unchangedPreviews.push({
+        binding: selectedBindings[i],
         newVariableName: null,
         newVariableId: null,
-        status: 'unchanged' as const
-      }))
+        status: 'unchanged'
+      });
+    }
+    figma.ui.postMessage({
+      type: 'preview-result',
+      previews: unchangedPreviews
     });
     return;
   }
 
-  const previews: RemapPreview[] = [];
+  var previews: RemapPreview[] = [];
 
-  for (const binding of selectedBindings) {
-    const newName = applyFindReplace(binding.variableName, findText, replaceText, options);
+  for (var i = 0; i < selectedBindings.length; i++) {
+    var binding = selectedBindings[i];
+    var newName = applyFindReplace(binding.variableName, findText, replaceText, options);
 
     if (newName === binding.variableName) {
       previews.push({
-        binding,
+        binding: binding,
         newVariableName: null,
         newVariableId: null,
         status: 'unchanged'
@@ -294,19 +343,19 @@ async function handlePreviewRemap(
     }
 
     // Try to find target variable in the same collection
-    const targetVariable = await findVariableByName(newName, binding.collectionId);
+    var targetVariable = await findVariableByName(newName, binding.collectionId);
 
     previews.push({
-      binding,
+      binding: binding,
       newVariableName: newName,
-      newVariableId: targetVariable?.id || null,
+      newVariableId: targetVariable ? targetVariable.id : null,
       status: targetVariable ? 'found' : 'not_found'
     });
   }
 
   figma.ui.postMessage({
     type: 'preview-result',
-    previews
+    previews: previews
   });
 }
 
@@ -318,37 +367,64 @@ function applyFindReplace(
 ): string {
   if (options.wholeSegment) {
     // Split by '/' and replace whole segments only
-    const segments = original.split('/');
-    const newSegments = segments.map(seg => {
+    var segments = original.split('/');
+    var newSegments: string[] = [];
+    for (var i = 0; i < segments.length; i++) {
+      var seg = segments[i];
       if (options.caseSensitive) {
-        return seg === find ? replace : seg;
+        newSegments.push(seg === find ? replace : seg);
       } else {
-        return seg.toLowerCase() === find.toLowerCase() ? replace : seg;
+        newSegments.push(seg.toLowerCase() === find.toLowerCase() ? replace : seg);
       }
-    });
+    }
     return newSegments.join('/');
   } else {
     // Simple string replacement
     if (options.caseSensitive) {
       return original.split(find).join(replace);
     } else {
-      const regex = new RegExp(escapeRegExp(find), 'gi');
+      var regex = new RegExp(escapeRegExp(find), 'gi');
       return original.replace(regex, replace);
     }
   }
 }
 
-function escapeRegExp(string: string): string {
-  return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+function escapeRegExp(str: string): string {
+  return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
 async function findVariableByName(name: string, collectionId: string): Promise<Variable | null> {
-  for (const variable of variableCache.values()) {
+  var result: Variable | null = null;
+  variableCache.forEach(function(variable) {
     if (variable.name === name && variable.variableCollectionId === collectionId) {
-      return variable;
+      result = variable;
     }
-  }
-  return null;
+  });
+  return result;
+}
+
+async function handleGetCollectionVariables(collectionId: string): Promise<void> {
+  var variables: Array<{id: string, name: string}> = [];
+  
+  variableCache.forEach(function(variable) {
+    if (variable.variableCollectionId === collectionId) {
+      variables.push({
+        id: variable.id,
+        name: variable.name
+      });
+    }
+  });
+
+  // Sort by name
+  variables.sort(function(a, b) {
+    return a.name.localeCompare(b.name);
+  });
+
+  figma.ui.postMessage({
+    type: 'collection-variables',
+    collectionId: collectionId,
+    variables: variables
+  });
 }
 
 async function handleApplyRemap(remaps: RemapRequest[]): Promise<void> {
@@ -360,28 +436,34 @@ async function handleApplyRemap(remaps: RemapRequest[]): Promise<void> {
     return;
   }
 
-  let appliedCount = 0;
-  const errors: string[] = [];
+  var appliedCount = 0;
+  var errors: string[] = [];
 
-  // Group all changes for single undo step
-  for (const remap of remaps) {
-    try {
-      const node = await figma.getNodeByIdAsync(remap.nodeId) as SceneNode;
-      if (!node) {
-        errors.push(`Node not found: ${remap.nodeId}`);
-        continue;
+  // Process each remap
+  for (var i = 0; i < remaps.length; i++) {
+    var remap = remaps[i];
+    var newVariable = variableCache.get(remap.newVariableId);
+    
+    if (!newVariable) {
+      errors.push('Variable not found: ' + remap.newVariableId);
+      continue;
+    }
+
+    // Apply to all nodes
+    for (var j = 0; j < remap.nodeIds.length; j++) {
+      var nodeId = remap.nodeIds[j];
+      try {
+        var node = await figma.getNodeByIdAsync(nodeId) as SceneNode;
+        if (!node) {
+          errors.push('Node not found: ' + nodeId);
+          continue;
+        }
+
+        await applyVariableToProperty(node, remap.propertyKey, remap.propertyType, newVariable);
+        appliedCount++;
+      } catch (err) {
+        errors.push('Error remapping ' + nodeId + '.' + remap.propertyKey + ': ' + err);
       }
-
-      const newVariable = variableCache.get(remap.newVariableId);
-      if (!newVariable) {
-        errors.push(`Variable not found: ${remap.newVariableId}`);
-        continue;
-      }
-
-      await applyVariableToProperty(node, remap.propertyKey, remap.propertyType, newVariable);
-      appliedCount++;
-    } catch (err) {
-      errors.push(`Error remapping ${remap.nodeId}.${remap.propertyKey}: ${err}`);
     }
   }
 
@@ -392,12 +474,12 @@ async function handleApplyRemap(remaps: RemapRequest[]): Promise<void> {
     type: 'apply-complete',
     result: {
       success: errors.length === 0,
-      appliedCount,
+      appliedCount: appliedCount,
       errors: errors.length > 0 ? errors : undefined
     }
   });
 
-  figma.notify(`Applied ${appliedCount} variable remap${appliedCount !== 1 ? 's' : ''}`, { timeout: 2000 });
+  figma.notify('Applied ' + appliedCount + ' variable remap' + (appliedCount !== 1 ? 's' : ''), { timeout: 2000 });
 }
 
 async function applyVariableToProperty(
@@ -406,26 +488,39 @@ async function applyVariableToProperty(
   propertyType: PropertyType,
   variable: Variable
 ): Promise<void> {
-  // Handle array properties (fills, strokes, effects)
-  if (propertyType === 'color') {
-    if (propertyKey === 'fills' && 'fills' in node) {
-      const fills = [...(node.fills as Paint[])];
-      if (fills.length > 0 && fills[0].type === 'SOLID') {
-        const newFill = figma.variables.setBoundVariableForPaint(fills[0], 'color', variable);
-        (node as GeometryMixin).fills = [newFill];
-      }
-    } else if (propertyKey === 'strokes' && 'strokes' in node) {
-      const strokes = [...(node.strokes as Paint[])];
-      if (strokes.length > 0 && strokes[0].type === 'SOLID') {
-        const newStroke = figma.variables.setBoundVariableForPaint(strokes[0], 'color', variable);
-        (node as GeometryMixin).strokes = [newStroke];
-      }
+  // Handle fill colors
+  if (propertyType === 'fill' && propertyKey === 'fills' && 'fills' in node) {
+    var fills = (node.fills as Paint[]).slice();
+    if (fills.length > 0 && fills[0].type === 'SOLID') {
+      var newFill = figma.variables.setBoundVariableForPaint(fills[0], 'color', variable);
+      (node as GeometryMixin).fills = [newFill];
     }
-  } else {
-    // Handle scalar properties (spacing, radius, etc.)
-    if ('setBoundVariable' in node) {
-      (node as SceneNode & { setBoundVariable: (field: string, variable: Variable) => void })
-        .setBoundVariable(propertyKey as VariableBindableNodeField, variable);
+    return;
+  }
+
+  // Handle stroke colors
+  if (propertyType === 'stroke' && propertyKey === 'strokes' && 'strokes' in node) {
+    var strokes = (node.strokes as Paint[]).slice();
+    if (strokes.length > 0 && strokes[0].type === 'SOLID') {
+      var newStroke = figma.variables.setBoundVariableForPaint(strokes[0], 'color', variable);
+      (node as GeometryMixin).strokes = [newStroke];
+    }
+    return;
+  }
+
+  // Handle effects (shadows, etc.) - more complex, need to handle each effect
+  if (propertyType === 'effect' && propertyKey === 'effects' && 'effects' in node) {
+    // Effects are more complex - for now skip
+    // TODO: Implement effect variable binding
+    return;
+  }
+
+  // Handle scalar properties (spacing, radius, etc.)
+  if ('setBoundVariable' in node) {
+    try {
+      (node as any).setBoundVariable(propertyKey as VariableBindableNodeField, variable);
+    } catch (e) {
+      // Some properties may not be bindable
     }
   }
 }
@@ -434,15 +529,15 @@ async function refreshVariableCaches(): Promise<void> {
   variableCache.clear();
   collectionCache.clear();
 
-  const variables = await figma.variables.getLocalVariablesAsync();
-  const collections = await figma.variables.getLocalVariableCollectionsAsync();
+  var variables = await figma.variables.getLocalVariablesAsync();
+  var collections = await figma.variables.getLocalVariableCollectionsAsync();
 
-  for (const variable of variables) {
-    variableCache.set(variable.id, variable);
+  for (var i = 0; i < variables.length; i++) {
+    variableCache.set(variables[i].id, variables[i]);
   }
 
-  for (const collection of collections) {
-    collectionCache.set(collection.id, collection);
+  for (var i = 0; i < collections.length; i++) {
+    collectionCache.set(collections[i].id, collections[i]);
   }
 }
 
@@ -450,6 +545,6 @@ async function refreshVariableCaches(): Promise<void> {
 // Auto-scan on startup
 // ============================================================================
 
-(async () => {
+(async function() {
   await handleScanSelection();
 })();
