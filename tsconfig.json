@@ -9,5 +9,5 @@
     ],
     "outDir": "."
   },
-  "include": ["code.ts"]
+  "files": ["code.ts"]
 }
