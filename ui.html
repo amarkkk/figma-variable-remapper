@@ -13,7 +13,7 @@
       --accent-primary: #18a0fb; --accent-hover: #0d8ce8; --accent-active: #0b7cd6;
       --success-bg: #d4edda; --success-text: #155724; --success-border: #c3e6cb;
       --warning-bg: #fff3cd; --warning-text: #856404; --warning-border: #ffc107;
-      --error-bg: #f8d7da; --error-text: #721c24; --error-border: #f5c6cb;
+      --error-bg: #f8d7da; --error-text: #dc3545; --error-border: #f5c6cb;
     }
     [data-theme="dark"] {
       --bg-primary: #1e1e1e; --bg-secondary: #2c2c2c; --bg-tertiary: #3c3c3c;
@@ -27,6 +27,8 @@
     }
     body { font-family: 'Inter', -apple-system, sans-serif; font-size: 12px; color: var(--text-secondary); background: var(--bg-primary); overflow: hidden; }
     .container { display: flex; flex-direction: column; height: 100vh; padding: 12px; }
+    
+    /* Find/Replace Section */
     .find-replace-section { background: var(--bg-secondary); border: 1px solid var(--border-medium); border-radius: 6px; padding: 12px; margin-bottom: 12px; }
     .find-replace-row { display: flex; gap: 8px; align-items: center; margin-bottom: 8px; }
     .find-replace-row:last-child { margin-bottom: 0; }
@@ -37,16 +39,22 @@
     .options-row { display: flex; gap: 16px; align-items: center; }
     .checkbox-label { display: flex; align-items: center; gap: 6px; cursor: pointer; font-size: 11px; color: var(--text-tertiary); }
     .checkbox-label input[type="checkbox"] { cursor: pointer; }
+    
+    /* Buttons */
     .btn { padding: 6px 12px; border: 1px solid var(--border-strong); border-radius: 4px; font-size: 12px; font-weight: 500; cursor: pointer; background: var(--bg-secondary); color: var(--text-secondary); transition: all 0.15s ease; }
     .btn:hover { background: var(--bg-hover); }
     .btn-primary { background: var(--accent-primary); color: white; border-color: var(--accent-primary); }
     .btn-primary:hover { background: var(--accent-hover); }
     .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
     .btn-apply-find-replace { padding: 6px 16px; }
+    
+    /* Main Content */
     .main-content { flex: 1; display: flex; flex-direction: column; overflow: hidden; border: 1px solid var(--border-medium); border-radius: 6px; background: var(--bg-primary); }
     .columns-header { display: grid; grid-template-columns: 1fr 1fr; background: var(--bg-secondary); border-bottom: 1px solid var(--border-medium); font-size: 11px; font-weight: 600; color: var(--text-tertiary); text-transform: uppercase; letter-spacing: 0.5px; }
     .columns-header > div { padding: 8px 12px; }
     .columns-header > div:first-child { border-right: 1px solid var(--border-medium); }
+    
+    /* Property Groups */
     .property-groups { flex: 1; overflow-y: auto; }
     .property-group { border-bottom: 1px solid var(--border-medium); }
     .property-group:last-child { border-bottom: none; }
@@ -60,6 +68,8 @@
     .select-all-btn:hover { background: var(--bg-hover); color: var(--text-secondary); }
     .property-group-items { display: none; }
     .property-group-items.expanded { display: block; }
+    
+    /* Binding Rows */
     .binding-row { display: grid; grid-template-columns: 1fr 1fr; border-bottom: 1px solid var(--border-subtle); }
     .binding-row:last-child { border-bottom: none; }
     .binding-row:hover { background: var(--bg-hover); }
@@ -67,39 +77,198 @@
     .binding-cell:first-child { border-right: 1px solid var(--border-subtle); }
     .binding-checkbox { cursor: pointer; flex-shrink: 0; }
     .binding-name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--text-secondary); }
-    .binding-count { font-size: 10px; color: var(--text-disabled); background: var(--bg-tertiary); padding: 1px 5px; border-radius: 8px; flex-shrink: 0; }
+    
+    /* Count Badge - Improved contrast */
+    .binding-count { 
+      font-size: 11px; 
+      font-weight: 600;
+      color: var(--text-secondary); 
+      background: var(--bg-tertiary); 
+      padding: 2px 7px; 
+      border-radius: 10px; 
+      flex-shrink: 0; 
+      cursor: help;
+      border: 1px solid var(--border-strong);
+      transition: all 0.15s ease;
+    }
+    .binding-count:hover {
+      background: var(--accent-primary);
+      color: white;
+      border-color: var(--accent-primary);
+    }
+    
     .binding-preview { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .status-found { color: var(--success-text); }
-    .status-not-found { color: var(--error-text); }
+    .status-not-found { color: var(--error-text); font-weight: 500; }
     .status-unchanged { color: var(--text-disabled); font-style: italic; cursor: default; }
-    .status-icon { font-size: 12px; flex-shrink: 0; }
+    
+    /* Warning Icon - Much more visible */
+    .status-icon { 
+      font-size: 14px; 
+      flex-shrink: 0; 
+      cursor: help;
+      transition: transform 0.15s ease;
+    }
+    .status-icon:hover {
+      transform: scale(1.2);
+    }
+    .status-icon-success { color: var(--success-text); }
+    .status-icon-error { 
+      color: var(--error-text); 
+      font-weight: bold;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 20px;
+      height: 20px;
+      background: var(--error-bg);
+      border: 1px solid var(--error-border);
+      border-radius: 50%;
+    }
+    
+    /* Tooltips */
+    .tooltip-wrapper {
+      position: relative;
+      display: inline-flex;
+    }
+    .tooltip {
+      position: absolute;
+      bottom: calc(100% + 8px);
+      left: 50%;
+      transform: translateX(-50%);
+      background: var(--text-primary);
+      color: var(--bg-primary);
+      padding: 6px 10px;
+      border-radius: 4px;
+      font-size: 11px;
+      font-family: 'Inter', -apple-system, sans-serif;
+      white-space: nowrap;
+      z-index: 1000;
+      opacity: 0;
+      visibility: hidden;
+      transition: opacity 0.15s ease, visibility 0.15s ease;
+      pointer-events: none;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+    }
+    .tooltip::after {
+      content: '';
+      position: absolute;
+      top: 100%;
+      left: 50%;
+      transform: translateX(-50%);
+      border: 6px solid transparent;
+      border-top-color: var(--text-primary);
+    }
+    .tooltip-wrapper:hover .tooltip {
+      opacity: 1;
+      visibility: visible;
+    }
+    
+    /* Nested Instances */
     .nested-instances-section { padding: 8px 12px; background: var(--warning-bg); border-top: 1px solid var(--warning-border); font-size: 11px; color: var(--warning-text); }
     .nested-instances-section.hidden { display: none; }
     .nested-instances-title { font-weight: 600; margin-bottom: 4px; }
     .nested-instance-item { padding: 2px 0; }
+    
+    /* Footer */
     .footer { display: flex; justify-content: space-between; align-items: center; padding-top: 12px; margin-top: 12px; border-top: 1px solid var(--border-medium); }
     .footer-left { display: flex; align-items: center; gap: 8px; }
     .footer-stats { font-size: 11px; color: var(--text-tertiary); }
-    .footer-warning { font-size: 11px; color: var(--warning-text); }
+    .footer-warning { font-size: 11px; color: var(--error-text); font-weight: 500; }
     .footer-warning.hidden { display: none; }
+    .footer-right { display: flex; align-items: center; gap: 8px; }
+    
+    /* Icon Buttons */
     .icon-button { width: 28px; height: 28px; display: flex; align-items: center; justify-content: center; background: transparent; border: none; border-radius: 4px; cursor: pointer; color: var(--text-tertiary); }
     .icon-button:hover { background: var(--bg-hover); color: var(--text-secondary); }
+    .icon-button:disabled { opacity: 0.3; cursor: not-allowed; }
+    .icon-button:disabled:hover { background: transparent; color: var(--text-tertiary); }
+    
+    /* Undo/Redo Buttons */
+    .undo-redo-group { display: flex; gap: 2px; margin-right: 8px; }
+    .undo-redo-group .icon-button { 
+      border: 1px solid var(--border-medium); 
+      background: var(--bg-secondary);
+    }
+    .undo-redo-group .icon-button:hover:not(:disabled) { 
+      background: var(--bg-hover); 
+      border-color: var(--border-strong);
+    }
+    
+    /* History Panel */
+    .history-panel {
+      position: absolute;
+      bottom: 60px;
+      right: 12px;
+      width: 280px;
+      max-height: 200px;
+      background: var(--bg-primary);
+      border: 1px solid var(--border-medium);
+      border-radius: 6px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+      z-index: 100;
+      display: none;
+    }
+    .history-panel.visible { display: block; }
+    .history-panel-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 8px 12px;
+      border-bottom: 1px solid var(--border-medium);
+      background: var(--bg-secondary);
+      border-radius: 6px 6px 0 0;
+    }
+    .history-panel-title { font-weight: 600; font-size: 11px; color: var(--text-primary); }
+    .history-panel-warning { font-size: 10px; color: var(--warning-text); }
+    .history-panel-close { 
+      background: none; 
+      border: none; 
+      cursor: pointer; 
+      color: var(--text-tertiary);
+      padding: 2px;
+    }
+    .history-panel-close:hover { color: var(--text-primary); }
+    .history-panel-content {
+      max-height: 150px;
+      overflow-y: auto;
+    }
+    .history-item {
+      padding: 8px 12px;
+      border-bottom: 1px solid var(--border-subtle);
+      font-size: 11px;
+      cursor: default;
+    }
+    .history-item:last-child { border-bottom: none; }
+    .history-item.current { background: var(--accent-primary); color: white; }
+    .history-item.future { opacity: 0.5; }
+    .history-item-time { font-size: 10px; color: var(--text-disabled); }
+    .history-item.current .history-item-time { color: rgba(255,255,255,0.7); }
+    .history-empty { padding: 16px; text-align: center; color: var(--text-disabled); font-size: 11px; }
+    
+    /* Empty State */
     .empty-state { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; color: var(--text-disabled); padding: 40px; text-align: center; }
     .empty-state-icon { font-size: 48px; margin-bottom: 12px; opacity: 0.5; }
     .empty-state-title { font-size: 14px; font-weight: 600; margin-bottom: 4px; color: var(--text-tertiary); }
     .empty-state-desc { font-size: 12px; }
+    
+    /* Dialog */
     .dialog-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; z-index: 1000; }
     .dialog-overlay.hidden { display: none; }
     .dialog-box { background: var(--bg-primary); border-radius: 8px; padding: 20px; max-width: 360px; border: 1px solid var(--border-medium); }
     .dialog-title { font-size: 14px; font-weight: 600; margin-bottom: 8px; color: var(--text-primary); }
     .dialog-message { font-size: 12px; color: var(--text-secondary); margin-bottom: 16px; line-height: 1.5; }
     .dialog-actions { display: flex; gap: 8px; justify-content: flex-end; }
+    
+    /* Resize Handle */
     #resize-corner { position: absolute; right: 4px; bottom: 4px; cursor: nwse-resize; z-index: 10000; opacity: 0.4; color: var(--text-tertiary); }
     #resize-corner:hover { opacity: 0.8; }
-    .property-groups::-webkit-scrollbar { width: 8px; }
-    .property-groups::-webkit-scrollbar-track { background: var(--bg-secondary); }
-    .property-groups::-webkit-scrollbar-thumb { background: var(--border-strong); border-radius: 4px; }
-    .property-groups::-webkit-scrollbar-thumb:hover { background: var(--text-tertiary); }
+    
+    /* Scrollbar */
+    .property-groups::-webkit-scrollbar, .history-panel-content::-webkit-scrollbar { width: 8px; }
+    .property-groups::-webkit-scrollbar-track, .history-panel-content::-webkit-scrollbar-track { background: var(--bg-secondary); }
+    .property-groups::-webkit-scrollbar-thumb, .history-panel-content::-webkit-scrollbar-thumb { background: var(--border-strong); border-radius: 4px; }
+    .property-groups::-webkit-scrollbar-thumb:hover, .history-panel-content::-webkit-scrollbar-thumb:hover { background: var(--text-tertiary); }
   </style>
 </head>
 <body>
@@ -138,9 +307,35 @@
         <span class="footer-stats" id="footer-stats">0 unique variables</span>
         <span class="footer-warning hidden" id="footer-warning">⚠ 0 targets not found</span>
       </div>
-      <button class="btn btn-primary" id="apply-changes-btn" disabled>Apply 0 Changes</button>
+      <div class="footer-right">
+        <div class="undo-redo-group">
+          <button class="icon-button" id="undo-btn" title="Undo (history clears when plugin closes)" disabled>
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 256 256"><path d="M224,128a96,96,0,0,1-96,96H64a8,8,0,0,1,0-16h64a80,80,0,0,0,0-160H51.31l18.35,18.34a8,8,0,1,1-11.32,11.32l-32-32a8,8,0,0,1,0-11.32l32-32A8,8,0,0,1,69.66,13.66L51.31,32H128A96.11,96.11,0,0,1,224,128Z"></path></svg>
+          </button>
+          <button class="icon-button" id="redo-btn" title="Redo" disabled>
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 256 256"><path d="M32,128A96.11,96.11,0,0,1,128,32h76.69L186.34,13.66a8,8,0,0,1,11.32-11.32l32,32a8,8,0,0,1,0,11.32l-32,32a8,8,0,0,1-11.32-11.32L204.69,48H128a80,80,0,0,0,0,160h64a8,8,0,0,1,0,16H128A96,96,0,0,1,32,128Z"></path></svg>
+          </button>
+          <button class="icon-button" id="history-btn" title="View history">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 256 256"><path d="M128,24A104,104,0,1,0,232,128,104.11,104.11,0,0,0,128,24Zm0,192a88,88,0,1,1,88-88A88.1,88.1,0,0,1,128,216Zm64-88a8,8,0,0,1-8,8H128a8,8,0,0,1-8-8V72a8,8,0,0,1,16,0v48h48A8,8,0,0,1,192,128Z"></path></svg>
+          </button>
+        </div>
+        <button class="btn btn-primary" id="apply-changes-btn" disabled>Apply 0 Changes</button>
+      </div>
+    </div>
+    
+    <!-- History Panel -->
+    <div class="history-panel" id="history-panel">
+      <div class="history-panel-header">
+        <span class="history-panel-title">History</span>
+        <span class="history-panel-warning">⚠ Clears on close</span>
+        <button class="history-panel-close" id="history-close">✕</button>
+      </div>
+      <div class="history-panel-content" id="history-content">
+        <div class="history-empty">No changes yet</div>
+      </div>
     </div>
   </div>
+  
   <div class="dialog-overlay hidden" id="unsaved-dialog">
     <div class="dialog-box">
       <div class="dialog-title">Unsaved Changes</div>
@@ -149,6 +344,7 @@
     </div>
   </div>
   <svg id="resize-corner" xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 256 256"><path d="M213.66,133.66l-80,80a8,8,0,0,1-11.32-11.32l80-80a8,8,0,0,1,11.32,11.32Zm-16-99.32a8,8,0,0,0-11.32,0l-152,152a8,8,0,0,0,11.32,11.32l152-152A8,8,0,0,0,197.66,34.34Z"></path></svg>
+  
   <script>
     // State
     var currentBindings = [];
@@ -159,6 +355,8 @@
     var pendingSelectionChange = false;
     var currentTheme = 'light';
     var totalNodes = 0;
+    var historyData = [];
+    var historyIndex = -1;
 
     // DOM Elements
     var findInput = document.getElementById('find-input');
@@ -179,6 +377,12 @@
     var unsavedDialog = document.getElementById('unsaved-dialog');
     var dialogStay = document.getElementById('dialog-stay');
     var dialogProceed = document.getElementById('dialog-proceed');
+    var undoBtn = document.getElementById('undo-btn');
+    var redoBtn = document.getElementById('redo-btn');
+    var historyBtn = document.getElementById('history-btn');
+    var historyPanel = document.getElementById('history-panel');
+    var historyContent = document.getElementById('history-content');
+    var historyClose = document.getElementById('history-close');
 
     // Property type labels
     var propertyTypeLabels = {
@@ -192,7 +396,6 @@
       other: 'Other'
     };
 
-    // Property type order
     var propertyTypeOrder = ['fill', 'stroke', 'effect', 'text', 'spacing', 'cornerRadius', 'typography', 'other'];
 
     function init() {
@@ -206,6 +409,7 @@
       replaceInput.addEventListener('keyup', function(e) { if (e.key === 'Enter') applyFindReplace(); });
       applyChangesBtn.addEventListener('click', applyChanges);
       themeToggle.addEventListener('click', toggleTheme);
+      
       dialogStay.addEventListener('click', function() { 
         unsavedDialog.classList.add('hidden'); 
         pendingSelectionChange = false; 
@@ -216,6 +420,29 @@
         previewResults.clear(); 
         pendingSelectionChange = false; 
         parent.postMessage({ pluginMessage: { type: 'scan-selection' } }, '*'); 
+      });
+      
+      // Undo/Redo
+      undoBtn.addEventListener('click', function() {
+        parent.postMessage({ pluginMessage: { type: 'undo' } }, '*');
+      });
+      redoBtn.addEventListener('click', function() {
+        parent.postMessage({ pluginMessage: { type: 'redo' } }, '*');
+      });
+      
+      // History panel
+      historyBtn.addEventListener('click', function() {
+        historyPanel.classList.toggle('visible');
+      });
+      historyClose.addEventListener('click', function() {
+        historyPanel.classList.remove('visible');
+      });
+      
+      // Close history panel when clicking outside
+      document.addEventListener('click', function(e) {
+        if (!historyPanel.contains(e.target) && e.target !== historyBtn && !historyBtn.contains(e.target)) {
+          historyPanel.classList.remove('visible');
+        }
       });
     }
 
@@ -250,6 +477,7 @@
         case 'selection-changed': handleSelectionChange(msg.hasSelection); break;
         case 'preview-result': handlePreviewResult(msg.previews); break;
         case 'apply-complete': handleApplyComplete(msg.result); break;
+        case 'history-update': handleHistoryUpdate(msg.history, msg.historyIndex); break;
         case 'error': console.error('Plugin error:', msg.message); break;
       }
     };
@@ -262,7 +490,6 @@
       previewResults.clear();
       hasUnsavedChanges = false;
 
-      // Select all by default
       currentBindings.forEach(function(b) {
         selectedBindingKeys.add(getBindingKey(b));
       });
@@ -297,6 +524,42 @@
       findInput.value = ''; 
       replaceInput.value = ''; 
     }
+    
+    function handleHistoryUpdate(history, index) {
+      historyData = history;
+      historyIndex = index;
+      
+      // Update undo/redo buttons
+      undoBtn.disabled = index < 0;
+      redoBtn.disabled = index >= history.length - 1;
+      
+      // Render history panel
+      renderHistory();
+    }
+    
+    function renderHistory() {
+      if (historyData.length === 0) {
+        historyContent.innerHTML = '<div class="history-empty">No changes yet</div>';
+        return;
+      }
+      
+      var html = '';
+      for (var i = historyData.length - 1; i >= 0; i--) {
+        var entry = historyData[i];
+        var className = 'history-item';
+        if (i === historyIndex) className += ' current';
+        if (i > historyIndex) className += ' future';
+        
+        var time = new Date(entry.timestamp);
+        var timeStr = time.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        
+        html += '<div class="' + className + '">';
+        html += '<div>' + escapeHtml(entry.description) + '</div>';
+        html += '<div class="history-item-time">' + timeStr + '</div>';
+        html += '</div>';
+      }
+      historyContent.innerHTML = html;
+    }
 
     function applyFindReplace() {
       var findText = findInput.value.trim();
@@ -329,7 +592,9 @@
             propertyKey: preview.binding.propertyKey,
             propertyType: preview.binding.propertyType,
             oldVariableId: preview.binding.variableId,
+            oldVariableName: preview.binding.variableName,
             newVariableId: preview.newVariableId,
+            newVariableName: preview.newVariableName,
             nodeIds: preview.binding.nodeIds
           });
         }
@@ -349,7 +614,6 @@
       
       emptyState.style.display = 'none';
 
-      // Group by property type
       var groups = {};
       propertyTypeOrder.forEach(function(type) {
         groups[type] = { label: propertyTypeLabels[type], items: [] };
@@ -390,15 +654,19 @@
           if (preview) {
             if (preview.status === 'found') {
               previewHtml = '<span class="status-found">' + escapeHtml(preview.newVariableName) + '</span>';
-              statusIcon = '<span class="status-icon">✓</span>';
+              statusIcon = '<span class="tooltip-wrapper"><span class="status-icon status-icon-success">✓</span><span class="tooltip">Variable found and ready to apply</span></span>';
             } else if (preview.status === 'not_found') {
               previewHtml = '<span class="status-not-found">' + escapeHtml(preview.newVariableName) + '</span>';
-              statusIcon = '<span class="status-icon">⚠</span>';
+              statusIcon = '<span class="tooltip-wrapper"><span class="status-icon status-icon-error">!</span><span class="tooltip">Variable not found. Check for typos or ensure the variable exists in this collection.</span></span>';
             }
           }
 
-          // Show node count badge
-          var countBadge = binding.nodeCount > 1 ? '<span class="binding-count">×' + binding.nodeCount + '</span>' : '';
+          // Count badge with tooltip
+          var countBadge = '';
+          if (binding.nodeCount > 1) {
+            var tooltipText = binding.nodeCount + ' elements use this ' + propertyTypeLabels[binding.propertyType].toLowerCase().replace(' colors', ' color').replace('s', '');
+            countBadge = '<span class="tooltip-wrapper"><span class="binding-count">×' + binding.nodeCount + '</span><span class="tooltip">' + tooltipText + '</span></span>';
+          }
 
           html += '<div class="binding-row">';
           html += '<div class="binding-cell">';
