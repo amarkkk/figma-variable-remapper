@@ -12,8 +12,8 @@ interface BoundVariableInfo {
   variableName: string;
   collectionId: string;
   collectionName: string;
-  nodeCount: number; // How many nodes use this binding
-  nodeIds: string[]; // List of node IDs that use this binding
+  nodeCount: number;
+  nodeIds: string[];
 }
 
 type PropertyType = 'fill' | 'stroke' | 'effect' | 'text' | 'spacing' | 'cornerRadius' | 'typography' | 'other';
@@ -42,8 +42,25 @@ interface RemapRequest {
   propertyKey: string;
   propertyType: PropertyType;
   oldVariableId: string;
+  oldVariableName: string;
   newVariableId: string;
+  newVariableName: string;
   nodeIds: string[];
+}
+
+interface HistoryEntry {
+  id: string;
+  timestamp: number;
+  description: string;
+  remaps: Array<{
+    propertyKey: string;
+    propertyType: PropertyType;
+    oldVariableId: string;
+    oldVariableName: string;
+    newVariableId: string;
+    newVariableName: string;
+    nodeIds: string[];
+  }>;
 }
 
 // ============================================================================
@@ -59,6 +76,10 @@ figma.showUI(__html__, {
 // Variable cache for lookups
 var variableCache: Map<string, Variable> = new Map();
 var collectionCache: Map<string, VariableCollection> = new Map();
+
+// History for undo/redo (in-memory, cleared on plugin close)
+var history: HistoryEntry[] = [];
+var historyIndex = -1;
 
 // ============================================================================
 // Message Handling
@@ -77,6 +98,14 @@ figma.ui.onmessage = async function(msg: any) {
 
       case 'apply-remap':
         await handleApplyRemap(msg.remaps);
+        break;
+
+      case 'undo':
+        await handleUndo();
+        break;
+
+      case 'redo':
+        await handleRedo();
         break;
 
       case 'get-collection-variables':
@@ -128,7 +157,6 @@ async function handleScanSelection(): Promise<void> {
   // Refresh caches
   await refreshVariableCaches();
 
-  // Map to aggregate bindings: key = "propertyKey:variableId"
   var bindingMap: Map<string, BoundVariableInfo> = new Map();
   var nestedInstances: NestedInstanceInfo[] = [];
   var processedNestedIds: Set<string> = new Set();
@@ -139,13 +167,11 @@ async function handleScanSelection(): Promise<void> {
     totalNodes += await scanNode(node, bindingMap, nestedInstances, processedNestedIds, false);
   }
 
-  // Convert map to array
   var bindings: BoundVariableInfo[] = [];
   bindingMap.forEach(function(value) {
     bindings.push(value);
   });
 
-  // Sort by property type, then by variable name
   bindings.sort(function(a, b) {
     if (a.propertyType !== b.propertyType) {
       return a.propertyType.localeCompare(b.propertyType);
@@ -172,12 +198,10 @@ async function scanNode(
 ): Promise<number> {
   var nodeCount = 1;
 
-  // Check if this is a nested instance (not the top-level selection)
   if (node.type === 'INSTANCE' && isNestedInstance) {
     if (!processedNestedIds.has(node.id)) {
       processedNestedIds.add(node.id);
 
-      // Count bound variables in this instance
       var instanceBindings: Map<string, BoundVariableInfo> = new Map();
       await collectBoundVariables(node, instanceBindings);
 
@@ -195,13 +219,11 @@ async function scanNode(
         });
       }
     }
-    return nodeCount; // Don't recurse into nested instances
+    return nodeCount;
   }
 
-  // Collect bound variables from this node
   await collectBoundVariables(node, bindingMap, node.id);
 
-  // Recurse into children
   if ('children' in node) {
     var children = (node as ChildrenMixin).children;
     for (var i = 0; i < children.length; i++) {
@@ -251,13 +273,11 @@ async function collectBoundVariables(
 
           var existing = bindingMap.get(mapKey);
           if (existing) {
-            // Increment count and add nodeId
             existing.nodeCount++;
             if (nodeId && existing.nodeIds.indexOf(nodeId) === -1) {
               existing.nodeIds.push(nodeId);
             }
           } else {
-            // Create new entry
             bindingMap.set(mapKey, {
               propertyType: propType,
               propertyKey: key,
@@ -276,27 +296,17 @@ async function collectBoundVariables(
 }
 
 function categorizeProperty(key: string): PropertyType {
-  // Fill colors
   if (key === 'fills') return 'fill';
-  
-  // Stroke colors
   if (key === 'strokes') return 'stroke';
-  
-  // Effect colors (shadows, etc.)
   if (key === 'effects') return 'effect';
-  
-  // Text colors
   if (key === 'textFills' || key === 'textColor') return 'text';
   
-  // Spacing
   var spacingProps = ['paddingLeft', 'paddingRight', 'paddingTop', 'paddingBottom', 'itemSpacing', 'counterAxisSpacing'];
   if (spacingProps.indexOf(key) !== -1) return 'spacing';
   
-  // Corner radius
   var radiusProps = ['topLeftRadius', 'topRightRadius', 'bottomLeftRadius', 'bottomRightRadius', 'cornerRadius'];
   if (radiusProps.indexOf(key) !== -1) return 'cornerRadius';
   
-  // Typography
   var typographyProps = ['fontSize', 'fontWeight', 'lineHeight', 'letterSpacing', 'paragraphSpacing'];
   if (typographyProps.indexOf(key) !== -1) return 'typography';
   
@@ -342,7 +352,6 @@ async function handlePreviewRemap(
       continue;
     }
 
-    // Try to find target variable in the same collection
     var targetVariable = await findVariableByName(newName, binding.collectionId);
 
     previews.push({
@@ -366,7 +375,6 @@ function applyFindReplace(
   options: { wholeSegment: boolean; caseSensitive: boolean }
 ): string {
   if (options.wholeSegment) {
-    // Split by '/' and replace whole segments only
     var segments = original.split('/');
     var newSegments: string[] = [];
     for (var i = 0; i < segments.length; i++) {
@@ -379,7 +387,6 @@ function applyFindReplace(
     }
     return newSegments.join('/');
   } else {
-    // Simple string replacement
     if (options.caseSensitive) {
       return original.split(find).join(replace);
     } else {
@@ -415,7 +422,6 @@ async function handleGetCollectionVariables(collectionId: string): Promise<void>
     }
   });
 
-  // Sort by name
   variables.sort(function(a, b) {
     return a.name.localeCompare(b.name);
   });
@@ -439,6 +445,24 @@ async function handleApplyRemap(remaps: RemapRequest[]): Promise<void> {
   var appliedCount = 0;
   var errors: string[] = [];
 
+  // Create history entry for undo
+  var historyEntry: HistoryEntry = {
+    id: 'h_' + Date.now(),
+    timestamp: Date.now(),
+    description: 'Remapped ' + remaps.length + ' variable' + (remaps.length !== 1 ? 's' : ''),
+    remaps: remaps.map(function(r) {
+      return {
+        propertyKey: r.propertyKey,
+        propertyType: r.propertyType,
+        oldVariableId: r.oldVariableId,
+        oldVariableName: r.oldVariableName,
+        newVariableId: r.newVariableId,
+        newVariableName: r.newVariableName,
+        nodeIds: r.nodeIds.slice()
+      };
+    })
+  };
+
   // Process each remap
   for (var i = 0; i < remaps.length; i++) {
     var remap = remaps[i];
@@ -449,7 +473,6 @@ async function handleApplyRemap(remaps: RemapRequest[]): Promise<void> {
       continue;
     }
 
-    // Apply to all nodes
     for (var j = 0; j < remap.nodeIds.length; j++) {
       var nodeId = remap.nodeIds[j];
       try {
@@ -467,7 +490,14 @@ async function handleApplyRemap(remaps: RemapRequest[]): Promise<void> {
     }
   }
 
-  // Trigger rescan after apply
+  // Add to history (truncate any redo history)
+  if (appliedCount > 0) {
+    history = history.slice(0, historyIndex + 1);
+    history.push(historyEntry);
+    historyIndex = history.length - 1;
+    sendHistoryUpdate();
+  }
+
   await handleScanSelection();
 
   figma.ui.postMessage({
@@ -482,13 +512,101 @@ async function handleApplyRemap(remaps: RemapRequest[]): Promise<void> {
   figma.notify('Applied ' + appliedCount + ' variable remap' + (appliedCount !== 1 ? 's' : ''), { timeout: 2000 });
 }
 
+async function handleUndo(): Promise<void> {
+  if (historyIndex < 0) {
+    figma.notify('Nothing to undo', { timeout: 1500 });
+    return;
+  }
+
+  var entry = history[historyIndex];
+  var undoneCount = 0;
+
+  // Reverse the remaps (swap old and new)
+  for (var i = 0; i < entry.remaps.length; i++) {
+    var remap = entry.remaps[i];
+    var oldVariable = variableCache.get(remap.oldVariableId);
+    
+    if (!oldVariable) continue;
+
+    for (var j = 0; j < remap.nodeIds.length; j++) {
+      var nodeId = remap.nodeIds[j];
+      try {
+        var node = await figma.getNodeByIdAsync(nodeId) as SceneNode;
+        if (!node) continue;
+
+        await applyVariableToProperty(node, remap.propertyKey, remap.propertyType, oldVariable);
+        undoneCount++;
+      } catch (err) {
+        // Silently continue
+      }
+    }
+  }
+
+  historyIndex--;
+  sendHistoryUpdate();
+  await handleScanSelection();
+
+  figma.notify('Undone: ' + entry.description, { timeout: 2000 });
+}
+
+async function handleRedo(): Promise<void> {
+  if (historyIndex >= history.length - 1) {
+    figma.notify('Nothing to redo', { timeout: 1500 });
+    return;
+  }
+
+  historyIndex++;
+  var entry = history[historyIndex];
+  var redoneCount = 0;
+
+  // Re-apply the remaps
+  for (var i = 0; i < entry.remaps.length; i++) {
+    var remap = entry.remaps[i];
+    var newVariable = variableCache.get(remap.newVariableId);
+    
+    if (!newVariable) continue;
+
+    for (var j = 0; j < remap.nodeIds.length; j++) {
+      var nodeId = remap.nodeIds[j];
+      try {
+        var node = await figma.getNodeByIdAsync(nodeId) as SceneNode;
+        if (!node) continue;
+
+        await applyVariableToProperty(node, remap.propertyKey, remap.propertyType, newVariable);
+        redoneCount++;
+      } catch (err) {
+        // Silently continue
+      }
+    }
+  }
+
+  sendHistoryUpdate();
+  await handleScanSelection();
+
+  figma.notify('Redone: ' + entry.description, { timeout: 2000 });
+}
+
+function sendHistoryUpdate(): void {
+  figma.ui.postMessage({
+    type: 'history-update',
+    history: history.map(function(h) {
+      return {
+        id: h.id,
+        timestamp: h.timestamp,
+        description: h.description,
+        remapCount: h.remaps.length
+      };
+    }),
+    historyIndex: historyIndex
+  });
+}
+
 async function applyVariableToProperty(
   node: SceneNode,
   propertyKey: string,
   propertyType: PropertyType,
   variable: Variable
 ): Promise<void> {
-  // Handle fill colors
   if (propertyType === 'fill' && propertyKey === 'fills' && 'fills' in node) {
     var fills = (node.fills as Paint[]).slice();
     if (fills.length > 0 && fills[0].type === 'SOLID') {
@@ -498,7 +616,6 @@ async function applyVariableToProperty(
     return;
   }
 
-  // Handle stroke colors
   if (propertyType === 'stroke' && propertyKey === 'strokes' && 'strokes' in node) {
     var strokes = (node.strokes as Paint[]).slice();
     if (strokes.length > 0 && strokes[0].type === 'SOLID') {
@@ -508,14 +625,11 @@ async function applyVariableToProperty(
     return;
   }
 
-  // Handle effects (shadows, etc.) - more complex, need to handle each effect
   if (propertyType === 'effect' && propertyKey === 'effects' && 'effects' in node) {
-    // Effects are more complex - for now skip
     // TODO: Implement effect variable binding
     return;
   }
 
-  // Handle scalar properties (spacing, radius, etc.)
   if ('setBoundVariable' in node) {
     try {
       (node as any).setBoundVariable(propertyKey as VariableBindableNodeField, variable);
@@ -547,4 +661,5 @@ async function refreshVariableCaches(): Promise<void> {
 
 (async function() {
   await handleScanSelection();
+  sendHistoryUpdate();
 })();
