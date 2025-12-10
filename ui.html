@@ -65,13 +65,14 @@
     .binding-row:hover { background: var(--bg-hover); }
     .binding-cell { padding: 8px 12px; display: flex; align-items: center; gap: 8px; font-size: 11px; font-family: 'SF Mono', 'Monaco', monospace; }
     .binding-cell:first-child { border-right: 1px solid var(--border-subtle); }
-    .binding-checkbox { cursor: pointer; }
+    .binding-checkbox { cursor: pointer; flex-shrink: 0; }
     .binding-name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--text-secondary); }
+    .binding-count { font-size: 10px; color: var(--text-disabled); background: var(--bg-tertiary); padding: 1px 5px; border-radius: 8px; flex-shrink: 0; }
     .binding-preview { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .status-found { color: var(--success-text); }
     .status-not-found { color: var(--error-text); }
-    .status-unchanged { color: var(--text-disabled); font-style: italic; }
-    .status-icon { font-size: 12px; }
+    .status-unchanged { color: var(--text-disabled); font-style: italic; cursor: default; }
+    .status-icon { font-size: 12px; flex-shrink: 0; }
     .nested-instances-section { padding: 8px 12px; background: var(--warning-bg); border-top: 1px solid var(--warning-border); font-size: 11px; color: var(--warning-text); }
     .nested-instances-section.hidden { display: none; }
     .nested-instances-title { font-weight: 600; margin-bottom: 4px; }
@@ -107,7 +108,7 @@
       <div class="find-replace-row">
         <div class="input-group"><label for="find-input">Find:</label><input type="text" id="find-input" placeholder="e.g. brand"></div>
         <div class="input-group"><label for="replace-input">Replace:</label><input type="text" id="replace-input" placeholder="e.g. neutral"></div>
-        <button class="btn btn-apply-find-replace" id="apply-find-replace-btn">▶ Apply</button>
+        <button class="btn btn-apply-find-replace" id="apply-find-replace-btn">▶ Preview</button>
       </div>
       <div class="find-replace-row options-row">
         <label class="checkbox-label"><input type="checkbox" id="whole-segment-checkbox" checked><span>Whole segment only</span></label>
@@ -115,7 +116,7 @@
       </div>
     </div>
     <div class="main-content" id="main-content">
-      <div class="columns-header"><div>Current</div><div>Remapped To</div></div>
+      <div class="columns-header"><div>Current Variable</div><div>Remapped To</div></div>
       <div class="property-groups" id="property-groups">
         <div class="empty-state" id="empty-state">
           <div class="empty-state-icon">🎯</div>
@@ -134,7 +135,7 @@
           <svg id="sun-icon" xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="currentColor" viewBox="0 0 256 256"><path d="M120,40V16a8,8,0,0,1,16,0V40a8,8,0,0,1-16,0Zm72,88a64,64,0,1,1-64-64A64.07,64.07,0,0,1,192,128Zm-16,0a48,48,0,1,0-48,48A48.05,48.05,0,0,0,176,128ZM58.34,69.66A8,8,0,0,0,69.66,58.34l-16-16A8,8,0,0,0,42.34,53.66Zm0,116.68-16,16a8,8,0,0,0,11.32,11.32l16-16a8,8,0,0,0-11.32-11.32ZM192,72a8,8,0,0,0,5.66-2.34l16-16a8,8,0,0,0-11.32-11.32l-16,16A8,8,0,0,0,192,72Zm5.66,114.34a8,8,0,0,0-11.32,11.32l16,16a8,8,0,0,0,11.32-11.32ZM48,128a8,8,0,0,0-8-8H16a8,8,0,0,0,0,16H40A8,8,0,0,0,48,128Zm80,80a8,8,0,0,0-8,8v24a8,8,0,0,0,16,0V216A8,8,0,0,0,128,208Zm112-88H216a8,8,0,0,0,0,16h24a8,8,0,0,0,0-16Z"></path></svg>
           <svg id="moon-icon" xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="currentColor" viewBox="0 0 256 256" style="display:none;"><path d="M233.54,142.23a8,8,0,0,0-8-2,88.08,88.08,0,0,1-109.8-109.8,8,8,0,0,0-10-10,104.84,104.84,0,0,0-52.91,37A104,104,0,0,0,136,224a103.09,103.09,0,0,0,62.52-20.88,104.84,104.84,0,0,0,37-52.91A8,8,0,0,0,233.54,142.23ZM188.9,190.34A88,88,0,0,1,65.66,67.11a89,89,0,0,1,31.4-26A106,106,0,0,0,96,56,104.11,104.11,0,0,0,200,160a106,106,0,0,0,14.92-1.06A89,89,0,0,1,188.9,190.34Z"></path></svg>
         </button>
-        <span class="footer-stats" id="footer-stats">0 variables selected</span>
+        <span class="footer-stats" id="footer-stats">0 unique variables</span>
         <span class="footer-warning hidden" id="footer-warning">⚠ 0 targets not found</span>
       </div>
       <button class="btn btn-primary" id="apply-changes-btn" disabled>Apply 0 Changes</button>
@@ -149,28 +150,100 @@
   </div>
   <svg id="resize-corner" xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 256 256"><path d="M213.66,133.66l-80,80a8,8,0,0,1-11.32-11.32l80-80a8,8,0,0,1,11.32,11.32Zm-16-99.32a8,8,0,0,0-11.32,0l-152,152a8,8,0,0,0,11.32,11.32l152-152A8,8,0,0,0,197.66,34.34Z"></path></svg>
   <script>
-    let currentBindings = [], selectedBindingKeys = new Set(), previewResults = new Map(), nestedInstances = [], hasUnsavedChanges = false, pendingSelectionChange = false, currentTheme = 'light';
-    const findInput = document.getElementById('find-input'), replaceInput = document.getElementById('replace-input'), applyFindReplaceBtn = document.getElementById('apply-find-replace-btn'), wholeSegmentCheckbox = document.getElementById('whole-segment-checkbox'), caseSensitiveCheckbox = document.getElementById('case-sensitive-checkbox'), propertyGroupsContainer = document.getElementById('property-groups'), emptyState = document.getElementById('empty-state'), nestedInstancesSection = document.getElementById('nested-instances-section'), nestedInstancesList = document.getElementById('nested-instances-list'), footerStats = document.getElementById('footer-stats'), footerWarning = document.getElementById('footer-warning'), applyChangesBtn = document.getElementById('apply-changes-btn'), themeToggle = document.getElementById('theme-toggle'), sunIcon = document.getElementById('sun-icon'), moonIcon = document.getElementById('moon-icon'), unsavedDialog = document.getElementById('unsaved-dialog'), dialogStay = document.getElementById('dialog-stay'), dialogProceed = document.getElementById('dialog-proceed');
-    function init() { setupEventListeners(); setupResizeHandle(); }
+    // State
+    var currentBindings = [];
+    var selectedBindingKeys = new Set();
+    var previewResults = new Map();
+    var nestedInstances = [];
+    var hasUnsavedChanges = false;
+    var pendingSelectionChange = false;
+    var currentTheme = 'light';
+    var totalNodes = 0;
+
+    // DOM Elements
+    var findInput = document.getElementById('find-input');
+    var replaceInput = document.getElementById('replace-input');
+    var applyFindReplaceBtn = document.getElementById('apply-find-replace-btn');
+    var wholeSegmentCheckbox = document.getElementById('whole-segment-checkbox');
+    var caseSensitiveCheckbox = document.getElementById('case-sensitive-checkbox');
+    var propertyGroupsContainer = document.getElementById('property-groups');
+    var emptyState = document.getElementById('empty-state');
+    var nestedInstancesSection = document.getElementById('nested-instances-section');
+    var nestedInstancesList = document.getElementById('nested-instances-list');
+    var footerStats = document.getElementById('footer-stats');
+    var footerWarning = document.getElementById('footer-warning');
+    var applyChangesBtn = document.getElementById('apply-changes-btn');
+    var themeToggle = document.getElementById('theme-toggle');
+    var sunIcon = document.getElementById('sun-icon');
+    var moonIcon = document.getElementById('moon-icon');
+    var unsavedDialog = document.getElementById('unsaved-dialog');
+    var dialogStay = document.getElementById('dialog-stay');
+    var dialogProceed = document.getElementById('dialog-proceed');
+
+    // Property type labels
+    var propertyTypeLabels = {
+      fill: 'Fill Colors',
+      stroke: 'Stroke Colors',
+      effect: 'Effect Colors',
+      text: 'Text Colors',
+      spacing: 'Spacing',
+      cornerRadius: 'Corner Radius',
+      typography: 'Typography',
+      other: 'Other'
+    };
+
+    // Property type order
+    var propertyTypeOrder = ['fill', 'stroke', 'effect', 'text', 'spacing', 'cornerRadius', 'typography', 'other'];
+
+    function init() {
+      setupEventListeners();
+      setupResizeHandle();
+    }
+
     function setupEventListeners() {
       applyFindReplaceBtn.addEventListener('click', applyFindReplace);
-      findInput.addEventListener('keyup', (e) => { if (e.key === 'Enter') applyFindReplace(); });
-      replaceInput.addEventListener('keyup', (e) => { if (e.key === 'Enter') applyFindReplace(); });
+      findInput.addEventListener('keyup', function(e) { if (e.key === 'Enter') applyFindReplace(); });
+      replaceInput.addEventListener('keyup', function(e) { if (e.key === 'Enter') applyFindReplace(); });
       applyChangesBtn.addEventListener('click', applyChanges);
       themeToggle.addEventListener('click', toggleTheme);
-      dialogStay.addEventListener('click', () => { unsavedDialog.classList.add('hidden'); pendingSelectionChange = false; });
-      dialogProceed.addEventListener('click', () => { unsavedDialog.classList.add('hidden'); hasUnsavedChanges = false; previewResults.clear(); pendingSelectionChange = false; parent.postMessage({ pluginMessage: { type: 'scan-selection' } }, '*'); });
+      dialogStay.addEventListener('click', function() { 
+        unsavedDialog.classList.add('hidden'); 
+        pendingSelectionChange = false; 
+      });
+      dialogProceed.addEventListener('click', function() { 
+        unsavedDialog.classList.add('hidden'); 
+        hasUnsavedChanges = false; 
+        previewResults.clear(); 
+        pendingSelectionChange = false; 
+        parent.postMessage({ pluginMessage: { type: 'scan-selection' } }, '*'); 
+      });
     }
+
     function setupResizeHandle() {
-      const corner = document.getElementById('resize-corner');
+      var corner = document.getElementById('resize-corner');
       if (!corner) return;
-      const resizeWindow = (e) => { parent.postMessage({ pluginMessage: { type: 'resize', size: { w: Math.max(500, Math.floor(e.clientX + 5)), h: Math.max(400, Math.floor(e.clientY + 5)) } } }, '*'); };
-      corner.addEventListener('pointerdown', (e) => { corner.onpointermove = resizeWindow; corner.setPointerCapture(e.pointerId); });
-      corner.addEventListener('pointerup', (e) => { corner.onpointermove = null; corner.releasePointerCapture(e.pointerId); });
+      var resizeWindow = function(e) { 
+        parent.postMessage({ pluginMessage: { type: 'resize', size: { w: Math.max(500, Math.floor(e.clientX + 5)), h: Math.max(400, Math.floor(e.clientY + 5)) } } }, '*'); 
+      };
+      corner.addEventListener('pointerdown', function(e) { 
+        corner.onpointermove = resizeWindow; 
+        corner.setPointerCapture(e.pointerId); 
+      });
+      corner.addEventListener('pointerup', function(e) { 
+        corner.onpointermove = null; 
+        corner.releasePointerCapture(e.pointerId); 
+      });
     }
-    function toggleTheme() { currentTheme = currentTheme === 'light' ? 'dark' : 'light'; document.documentElement.setAttribute('data-theme', currentTheme); sunIcon.style.display = currentTheme === 'dark' ? 'none' : 'block'; moonIcon.style.display = currentTheme === 'dark' ? 'block' : 'none'; }
-    window.onmessage = (event) => {
-      const msg = event.data.pluginMessage;
+
+    function toggleTheme() { 
+      currentTheme = currentTheme === 'light' ? 'dark' : 'light'; 
+      document.documentElement.setAttribute('data-theme', currentTheme); 
+      sunIcon.style.display = currentTheme === 'dark' ? 'none' : 'block'; 
+      moonIcon.style.display = currentTheme === 'dark' ? 'block' : 'none'; 
+    }
+
+    window.onmessage = function(event) {
+      var msg = event.data.pluginMessage;
       if (!msg) return;
       switch (msg.type) {
         case 'scan-complete': handleScanComplete(msg.result); break;
@@ -180,56 +253,262 @@
         case 'error': console.error('Plugin error:', msg.message); break;
       }
     };
+
     function handleScanComplete(result) {
-      currentBindings = result.bindings; nestedInstances = result.nestedInstances; selectedBindingKeys.clear(); previewResults.clear(); hasUnsavedChanges = false;
-      currentBindings.forEach(b => { if (!b.isNestedInstance) selectedBindingKeys.add(getBindingKey(b)); });
-      renderBindings(); renderNestedInstances(); updateFooter();
+      currentBindings = result.bindings;
+      nestedInstances = result.nestedInstances;
+      totalNodes = result.totalNodes || 0;
+      selectedBindingKeys.clear();
+      previewResults.clear();
+      hasUnsavedChanges = false;
+
+      // Select all by default
+      currentBindings.forEach(function(b) {
+        selectedBindingKeys.add(getBindingKey(b));
+      });
+
+      renderBindings();
+      renderNestedInstances();
+      updateFooter();
     }
-    function handleSelectionChange(hasSelection) { if (hasUnsavedChanges && hasSelection) { pendingSelectionChange = true; unsavedDialog.classList.remove('hidden'); } else { parent.postMessage({ pluginMessage: { type: 'scan-selection' } }, '*'); } }
-    function handlePreviewResult(previews) { previewResults.clear(); previews.forEach(p => previewResults.set(getBindingKey(p.binding), p)); hasUnsavedChanges = previews.some(p => p.status === 'found'); renderBindings(); updateFooter(); }
-    function handleApplyComplete(result) { hasUnsavedChanges = false; previewResults.clear(); findInput.value = ''; replaceInput.value = ''; }
+
+    function handleSelectionChange(hasSelection) { 
+      if (hasUnsavedChanges && hasSelection) { 
+        pendingSelectionChange = true; 
+        unsavedDialog.classList.remove('hidden'); 
+      } else { 
+        parent.postMessage({ pluginMessage: { type: 'scan-selection' } }, '*'); 
+      } 
+    }
+
+    function handlePreviewResult(previews) { 
+      previewResults.clear(); 
+      previews.forEach(function(p) {
+        previewResults.set(getBindingKey(p.binding), p);
+      }); 
+      hasUnsavedChanges = previews.some(function(p) { return p.status === 'found'; }); 
+      renderBindings(); 
+      updateFooter(); 
+    }
+
+    function handleApplyComplete(result) { 
+      hasUnsavedChanges = false; 
+      previewResults.clear(); 
+      findInput.value = ''; 
+      replaceInput.value = ''; 
+    }
+
     function applyFindReplace() {
-      const findText = findInput.value.trim(), replaceText = replaceInput.value.trim();
+      var findText = findInput.value.trim();
+      var replaceText = replaceInput.value.trim();
       if (!findText) return;
-      parent.postMessage({ pluginMessage: { type: 'preview-remap', findText, replaceText, options: { wholeSegment: wholeSegmentCheckbox.checked, caseSensitive: caseSensitiveCheckbox.checked }, selectedBindings: currentBindings.filter(b => selectedBindingKeys.has(getBindingKey(b))) } }, '*');
+      
+      var selectedBindings = currentBindings.filter(function(b) {
+        return selectedBindingKeys.has(getBindingKey(b));
+      });
+      
+      parent.postMessage({ 
+        pluginMessage: { 
+          type: 'preview-remap', 
+          findText: findText, 
+          replaceText: replaceText, 
+          options: { 
+            wholeSegment: wholeSegmentCheckbox.checked, 
+            caseSensitive: caseSensitiveCheckbox.checked 
+          }, 
+          selectedBindings: selectedBindings 
+        } 
+      }, '*');
     }
+
     function applyChanges() {
-      const remaps = [];
-      for (const [key, preview] of previewResults.entries()) { if (preview.status === 'found' && selectedBindingKeys.has(key)) { remaps.push({ nodeId: preview.binding.nodeId, propertyKey: preview.binding.propertyKey, propertyType: preview.binding.propertyType, oldVariableId: preview.binding.variableId, newVariableId: preview.newVariableId }); } }
+      var remaps = [];
+      previewResults.forEach(function(preview, key) {
+        if (preview.status === 'found' && selectedBindingKeys.has(key)) {
+          remaps.push({
+            propertyKey: preview.binding.propertyKey,
+            propertyType: preview.binding.propertyType,
+            oldVariableId: preview.binding.variableId,
+            newVariableId: preview.newVariableId,
+            nodeIds: preview.binding.nodeIds
+          });
+        }
+      });
+      
       if (remaps.length === 0) return;
-      parent.postMessage({ pluginMessage: { type: 'apply-remap', remaps } }, '*');
+      parent.postMessage({ pluginMessage: { type: 'apply-remap', remaps: remaps } }, '*');
     }
+
     function renderBindings() {
-      if (currentBindings.length === 0) { emptyState.style.display = 'flex'; propertyGroupsContainer.innerHTML = ''; propertyGroupsContainer.appendChild(emptyState); return; }
-      emptyState.style.display = 'none';
-      const groups = { color: { label: 'Colors', items: [] }, spacing: { label: 'Spacing', items: [] }, cornerRadius: { label: 'Corner Radius', items: [] }, typography: { label: 'Typography', items: [] }, other: { label: 'Other', items: [] } };
-      currentBindings.forEach(b => { if (!b.isNestedInstance) groups[b.propertyType].items.push(b); });
-      let html = '';
-      for (const [type, group] of Object.entries(groups)) {
-        if (group.items.length === 0) continue;
-        html += `<div class="property-group" data-type="${type}"><div class="property-group-header" onclick="toggleGroup('${type}')"><div class="property-group-header-left"><span class="property-group-toggle" id="toggle-${type}">▼</span><span class="property-group-title">${group.label}</span><span class="property-group-count">(${group.items.length})</span></div><button class="select-all-btn" onclick="event.stopPropagation(); toggleSelectAll('${type}')">Select All</button></div><div class="property-group-items expanded" id="items-${type}">`;
-        group.items.forEach(binding => {
-          const key = getBindingKey(binding), isSelected = selectedBindingKeys.has(key), preview = previewResults.get(key);
-          let previewHtml = '<span class="status-unchanged">(no change)</span>', statusIcon = '';
-          if (preview) { if (preview.status === 'found') { previewHtml = `<span class="status-found">${preview.newVariableName}</span>`; statusIcon = '<span class="status-icon">✓</span>'; } else if (preview.status === 'not_found') { previewHtml = `<span class="status-not-found">${preview.newVariableName}</span>`; statusIcon = '<span class="status-icon">⚠</span>'; } }
-          html += `<div class="binding-row"><div class="binding-cell"><input type="checkbox" class="binding-checkbox" data-key="${key}" ${isSelected ? 'checked' : ''} onchange="toggleBinding('${key}')"><span class="binding-name" title="${binding.variableName}">${binding.variableName}</span></div><div class="binding-cell"><span class="binding-preview">${previewHtml}</span>${statusIcon}</div></div>`;
-        });
-        html += '</div></div>';
+      if (currentBindings.length === 0) { 
+        emptyState.style.display = 'flex'; 
+        propertyGroupsContainer.innerHTML = ''; 
+        propertyGroupsContainer.appendChild(emptyState); 
+        return; 
       }
+      
+      emptyState.style.display = 'none';
+
+      // Group by property type
+      var groups = {};
+      propertyTypeOrder.forEach(function(type) {
+        groups[type] = { label: propertyTypeLabels[type], items: [] };
+      });
+
+      currentBindings.forEach(function(b) {
+        if (groups[b.propertyType]) {
+          groups[b.propertyType].items.push(b);
+        } else {
+          groups['other'].items.push(b);
+        }
+      });
+
+      var html = '';
+      propertyTypeOrder.forEach(function(type) {
+        var group = groups[type];
+        if (group.items.length === 0) return;
+
+        html += '<div class="property-group" data-type="' + type + '">';
+        html += '<div class="property-group-header" onclick="toggleGroup(\'' + type + '\')">';
+        html += '<div class="property-group-header-left">';
+        html += '<span class="property-group-toggle" id="toggle-' + type + '">▼</span>';
+        html += '<span class="property-group-title">' + group.label + '</span>';
+        html += '<span class="property-group-count">(' + group.items.length + ')</span>';
+        html += '</div>';
+        html += '<button class="select-all-btn" onclick="event.stopPropagation(); toggleSelectAll(\'' + type + '\')">Select All</button>';
+        html += '</div>';
+        html += '<div class="property-group-items expanded" id="items-' + type + '">';
+
+        group.items.forEach(function(binding) {
+          var key = getBindingKey(binding);
+          var isSelected = selectedBindingKeys.has(key);
+          var preview = previewResults.get(key);
+
+          var previewHtml = '<span class="status-unchanged">(no change)</span>';
+          var statusIcon = '';
+
+          if (preview) {
+            if (preview.status === 'found') {
+              previewHtml = '<span class="status-found">' + escapeHtml(preview.newVariableName) + '</span>';
+              statusIcon = '<span class="status-icon">✓</span>';
+            } else if (preview.status === 'not_found') {
+              previewHtml = '<span class="status-not-found">' + escapeHtml(preview.newVariableName) + '</span>';
+              statusIcon = '<span class="status-icon">⚠</span>';
+            }
+          }
+
+          // Show node count badge
+          var countBadge = binding.nodeCount > 1 ? '<span class="binding-count">×' + binding.nodeCount + '</span>' : '';
+
+          html += '<div class="binding-row">';
+          html += '<div class="binding-cell">';
+          html += '<input type="checkbox" class="binding-checkbox" data-key="' + key + '" ' + (isSelected ? 'checked' : '') + ' onchange="toggleBinding(\'' + key + '\')">';
+          html += '<span class="binding-name" title="' + escapeHtml(binding.variableName) + '">' + escapeHtml(binding.variableName) + '</span>';
+          html += countBadge;
+          html += '</div>';
+          html += '<div class="binding-cell">';
+          html += '<span class="binding-preview">' + previewHtml + '</span>';
+          html += statusIcon;
+          html += '</div>';
+          html += '</div>';
+        });
+
+        html += '</div></div>';
+      });
+
       propertyGroupsContainer.innerHTML = html;
     }
-    function renderNestedInstances() { if (nestedInstances.length === 0) { nestedInstancesSection.classList.add('hidden'); return; } nestedInstancesSection.classList.remove('hidden'); nestedInstancesList.innerHTML = nestedInstances.map(ni => `<div class="nested-instance-item">• ${ni.nodeName} → ${ni.mainComponentName} (${ni.boundVariableCount} variables)</div>`).join(''); }
-    function updateFooter() {
-      footerStats.textContent = `${selectedBindingKeys.size} variable${selectedBindingKeys.size !== 1 ? 's' : ''} selected`;
-      let notFoundCount = 0, foundCount = 0;
-      for (const [key, preview] of previewResults.entries()) { if (selectedBindingKeys.has(key)) { if (preview.status === 'not_found') notFoundCount++; if (preview.status === 'found') foundCount++; } }
-      if (notFoundCount > 0) { footerWarning.textContent = `⚠ ${notFoundCount} target${notFoundCount !== 1 ? 's' : ''} not found`; footerWarning.classList.remove('hidden'); } else { footerWarning.classList.add('hidden'); }
-      applyChangesBtn.disabled = foundCount === 0; applyChangesBtn.textContent = `Apply ${foundCount} Change${foundCount !== 1 ? 's' : ''}`;
+
+    function renderNestedInstances() { 
+      if (nestedInstances.length === 0) { 
+        nestedInstancesSection.classList.add('hidden'); 
+        return; 
+      } 
+      nestedInstancesSection.classList.remove('hidden'); 
+      var html = '';
+      nestedInstances.forEach(function(ni) {
+        html += '<div class="nested-instance-item">• ' + escapeHtml(ni.nodeName) + ' → ' + escapeHtml(ni.mainComponentName) + ' (' + ni.boundVariableCount + ' variables)</div>';
+      });
+      nestedInstancesList.innerHTML = html;
     }
-    function getBindingKey(binding) { return `${binding.nodeId}:${binding.propertyKey}:${binding.variableId}`; }
-    window.toggleGroup = function(type) { const items = document.getElementById(`items-${type}`), toggle = document.getElementById(`toggle-${type}`); if (items.classList.contains('expanded')) { items.classList.remove('expanded'); toggle.textContent = '▶'; } else { items.classList.add('expanded'); toggle.textContent = '▼'; } };
-    window.toggleSelectAll = function(type) { const group = currentBindings.filter(b => b.propertyType === type && !b.isNestedInstance), allSelected = group.every(b => selectedBindingKeys.has(getBindingKey(b))); group.forEach(b => { const key = getBindingKey(b); if (allSelected) selectedBindingKeys.delete(key); else selectedBindingKeys.add(key); }); renderBindings(); updateFooter(); };
-    window.toggleBinding = function(key) { if (selectedBindingKeys.has(key)) selectedBindingKeys.delete(key); else selectedBindingKeys.add(key); updateFooter(); };
+
+    function updateFooter() {
+      var selectedCount = selectedBindingKeys.size;
+      var totalUsages = 0;
+      currentBindings.forEach(function(b) {
+        if (selectedBindingKeys.has(getBindingKey(b))) {
+          totalUsages += b.nodeCount;
+        }
+      });
+      
+      footerStats.textContent = selectedCount + ' unique variable' + (selectedCount !== 1 ? 's' : '') + ' (' + totalUsages + ' usages)';
+
+      var notFoundCount = 0;
+      var foundCount = 0;
+      previewResults.forEach(function(preview, key) {
+        if (selectedBindingKeys.has(key)) {
+          if (preview.status === 'not_found') notFoundCount++;
+          if (preview.status === 'found') foundCount++;
+        }
+      });
+
+      if (notFoundCount > 0) { 
+        footerWarning.textContent = '⚠ ' + notFoundCount + ' target' + (notFoundCount !== 1 ? 's' : '') + ' not found'; 
+        footerWarning.classList.remove('hidden'); 
+      } else { 
+        footerWarning.classList.add('hidden'); 
+      }
+
+      applyChangesBtn.disabled = foundCount === 0; 
+      applyChangesBtn.textContent = 'Apply ' + foundCount + ' Change' + (foundCount !== 1 ? 's' : '');
+    }
+
+    function getBindingKey(binding) { 
+      return binding.propertyType + ':' + binding.propertyKey + ':' + binding.variableId; 
+    }
+
+    function escapeHtml(str) {
+      var div = document.createElement('div');
+      div.textContent = str;
+      return div.innerHTML;
+    }
+
+    window.toggleGroup = function(type) { 
+      var items = document.getElementById('items-' + type);
+      var toggle = document.getElementById('toggle-' + type); 
+      if (items.classList.contains('expanded')) { 
+        items.classList.remove('expanded'); 
+        toggle.textContent = '▶'; 
+      } else { 
+        items.classList.add('expanded'); 
+        toggle.textContent = '▼'; 
+      } 
+    };
+
+    window.toggleSelectAll = function(type) { 
+      var group = currentBindings.filter(function(b) { return b.propertyType === type; });
+      var allSelected = group.every(function(b) { return selectedBindingKeys.has(getBindingKey(b)); }); 
+      group.forEach(function(b) { 
+        var key = getBindingKey(b); 
+        if (allSelected) {
+          selectedBindingKeys.delete(key);
+        } else {
+          selectedBindingKeys.add(key);
+        }
+      }); 
+      renderBindings(); 
+      updateFooter(); 
+    };
+
+    window.toggleBinding = function(key) { 
+      if (selectedBindingKeys.has(key)) {
+        selectedBindingKeys.delete(key);
+      } else {
+        selectedBindingKeys.add(key);
+      }
+      updateFooter(); 
+    };
+
     init();
   </script>
 </body>
