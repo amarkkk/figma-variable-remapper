@@ -1,4 +1,24 @@
+# Dependencies
 node_modules/
-*.log
-.DS_Store
+
+# Build output
 code.js
+code.js.map
+*.tsbuildinfo
+
+# Logs
+*.log
+npm-debug.log*
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Editor directories
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Package lock (optional - some prefer to commit this)
+package-lock.json
