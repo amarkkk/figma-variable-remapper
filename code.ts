@@ -21,6 +21,7 @@ interface OrphanedBindingInfo {
   propertyType: PropertyType;
   propertyKey: string;
   variableId: string;
+  variableName: string;
   nodeCount: number;
   nodeIds: string[];
   nodeNames: string[];
@@ -102,6 +103,10 @@ var historyIndex = -1;
 figma.ui.onmessage = async function(msg: any) {
   try {
     switch (msg.type) {
+      case 'select-nodes':
+        await handleSelectNodes(msg.nodeIds);
+        break;
+
       case 'scan-selection':
         await handleScanSelection();
         break;
@@ -164,6 +169,20 @@ figma.on('selectionchange', function() {
 // ============================================================================
 // Core Functions
 // ============================================================================
+
+async function handleSelectNodes(nodeIds: string[]): Promise<void> {
+  var nodes: SceneNode[] = [];
+  for (var i = 0; i < nodeIds.length; i++) {
+    var node = await figma.getNodeByIdAsync(nodeIds[i]) as SceneNode;
+    if (node) {
+      nodes.push(node);
+    }
+  }
+  if (nodes.length > 0) {
+    figma.currentPage.selection = nodes;
+    figma.viewport.scrollAndZoomIntoView(nodes);
+  }
+}
 
 async function handleScanSelection(): Promise<void> {
   var selection = figma.currentPage.selection;
