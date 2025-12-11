@@ -14,14 +14,26 @@ interface BoundVariableInfo {
   collectionName: string;
   nodeCount: number;
   nodeIds: string[];
+  isOrphaned: boolean;
+}
+
+interface OrphanedBindingInfo {
+  propertyType: PropertyType;
+  propertyKey: string;
+  variableId: string;
+  nodeCount: number;
+  nodeIds: string[];
+  nodeNames: string[];
 }
 
 type PropertyType = 'fill' | 'stroke' | 'effect' | 'text' | 'spacing' | 'cornerRadius' | 'typography' | 'other';
 
 interface ScanResult {
   bindings: BoundVariableInfo[];
+  orphanedBindings: OrphanedBindingInfo[];
   nestedInstances: NestedInstanceInfo[];
   totalNodes: number;
+  localCollections: Array<{id: string, name: string}>;
 }
 
 interface NestedInstanceInfo {
@@ -46,6 +58,7 @@ interface RemapRequest {
   newVariableId: string;
   newVariableName: string;
   nodeIds: string[];
+  isOrphaned?: boolean;
 }
 
 interface HistoryEntry {
@@ -60,6 +73,7 @@ interface HistoryEntry {
     newVariableId: string;
     newVariableName: string;
     nodeIds: string[];
+    isOrphaned?: boolean;
   }>;
 }
 
@@ -69,7 +83,7 @@ interface HistoryEntry {
 
 figma.showUI(__html__, {
   width: 720,
-  height: 560,
+  height: 600,
   themeColors: true
 });
 
@@ -100,6 +114,10 @@ figma.ui.onmessage = async function(msg: any) {
         await handleApplyRemap(msg.remaps);
         break;
 
+      case 'apply-orphan-remap':
+        await handleApplyOrphanRemap(msg.orphanedBinding, msg.newVariableId, msg.newVariableName);
+        break;
+
       case 'undo':
         await handleUndo();
         break;
@@ -109,7 +127,11 @@ figma.ui.onmessage = async function(msg: any) {
         break;
 
       case 'get-collection-variables':
-        await handleGetCollectionVariables(msg.collectionId);
+        await handleGetCollectionVariables(msg.collectionId, msg.variableType);
+        break;
+
+      case 'get-all-local-variables':
+        await handleGetAllLocalVariables();
         break;
 
       case 'resize':
@@ -149,7 +171,13 @@ async function handleScanSelection(): Promise<void> {
   if (selection.length === 0) {
     figma.ui.postMessage({
       type: 'scan-complete',
-      result: { bindings: [], nestedInstances: [], totalNodes: 0 }
+      result: { 
+        bindings: [], 
+        orphanedBindings: [],
+        nestedInstances: [], 
+        totalNodes: 0,
+        localCollections: []
+      }
     });
     return;
   }
@@ -158,18 +186,24 @@ async function handleScanSelection(): Promise<void> {
   await refreshVariableCaches();
 
   var bindingMap: Map<string, BoundVariableInfo> = new Map();
+  var orphanedMap: Map<string, OrphanedBindingInfo> = new Map();
   var nestedInstances: NestedInstanceInfo[] = [];
   var processedNestedIds: Set<string> = new Set();
   var totalNodes = 0;
 
   for (var i = 0; i < selection.length; i++) {
     var node = selection[i];
-    totalNodes += await scanNode(node, bindingMap, nestedInstances, processedNestedIds, false);
+    totalNodes += await scanNode(node, bindingMap, orphanedMap, nestedInstances, processedNestedIds, false);
   }
 
   var bindings: BoundVariableInfo[] = [];
   bindingMap.forEach(function(value) {
     bindings.push(value);
+  });
+
+  var orphanedBindings: OrphanedBindingInfo[] = [];
+  orphanedMap.forEach(function(value) {
+    orphanedBindings.push(value);
   });
 
   bindings.sort(function(a, b) {
@@ -179,12 +213,30 @@ async function handleScanSelection(): Promise<void> {
     return a.variableName.localeCompare(b.variableName);
   });
 
+  orphanedBindings.sort(function(a, b) {
+    if (a.propertyType !== b.propertyType) {
+      return a.propertyType.localeCompare(b.propertyType);
+    }
+    return a.variableId.localeCompare(b.variableId);
+  });
+
+  // Get local collections for the UI dropdown
+  var localCollections: Array<{id: string, name: string}> = [];
+  collectionCache.forEach(function(collection) {
+    localCollections.push({
+      id: collection.id,
+      name: collection.name
+    });
+  });
+
   figma.ui.postMessage({
     type: 'scan-complete',
     result: {
       bindings: bindings,
+      orphanedBindings: orphanedBindings,
       nestedInstances: nestedInstances,
-      totalNodes: totalNodes
+      totalNodes: totalNodes,
+      localCollections: localCollections
     }
   });
 }
@@ -192,6 +244,7 @@ async function handleScanSelection(): Promise<void> {
 async function scanNode(
   node: SceneNode,
   bindingMap: Map<string, BoundVariableInfo>,
+  orphanedMap: Map<string, OrphanedBindingInfo>,
   nestedInstances: NestedInstanceInfo[],
   processedNestedIds: Set<string>,
   isNestedInstance: boolean
@@ -203,9 +256,11 @@ async function scanNode(
       processedNestedIds.add(node.id);
 
       var instanceBindings: Map<string, BoundVariableInfo> = new Map();
-      await collectBoundVariables(node, instanceBindings);
+      var instanceOrphaned: Map<string, OrphanedBindingInfo> = new Map();
+      await collectBoundVariables(node, instanceBindings, instanceOrphaned);
 
-      if (instanceBindings.size > 0) {
+      var totalBindings = instanceBindings.size + instanceOrphaned.size;
+      if (totalBindings > 0) {
         var mainComponent = await node.getMainComponentAsync();
         var mainName = 'Unknown Component';
         if (mainComponent && mainComponent.name) {
@@ -215,14 +270,14 @@ async function scanNode(
           nodeId: node.id,
           nodeName: node.name,
           mainComponentName: mainName,
-          boundVariableCount: instanceBindings.size
+          boundVariableCount: totalBindings
         });
       }
     }
     return nodeCount;
   }
 
-  await collectBoundVariables(node, bindingMap, node.id);
+  await collectBoundVariables(node, bindingMap, orphanedMap, node.id, node.name);
 
   if ('children' in node) {
     var children = (node as ChildrenMixin).children;
@@ -232,6 +287,7 @@ async function scanNode(
       nodeCount += await scanNode(
         child,
         bindingMap,
+        orphanedMap,
         nestedInstances,
         processedNestedIds,
         childIsNestedInstance || isNestedInstance
@@ -245,7 +301,9 @@ async function scanNode(
 async function collectBoundVariables(
   node: SceneNode,
   bindingMap: Map<string, BoundVariableInfo>,
-  nodeId?: string
+  orphanedMap: Map<string, OrphanedBindingInfo>,
+  nodeId?: string,
+  nodeName?: string
 ): Promise<void> {
   if (!('boundVariables' in node) || !node.boundVariables) {
     return;
@@ -267,8 +325,10 @@ async function collectBoundVariables(
         var variable = variableCache.get(alias.id);
         var collection = variable ? collectionCache.get(variable.variableCollectionId) : null;
 
+        var propType = categorizeProperty(key);
+
         if (variable && collection) {
-          var propType = categorizeProperty(key);
+          // Valid variable binding
           var mapKey = propType + ':' + key + ':' + variable.id;
 
           var existing = bindingMap.get(mapKey);
@@ -286,7 +346,31 @@ async function collectBoundVariables(
               collectionId: collection.id,
               collectionName: collection.name,
               nodeCount: 1,
-              nodeIds: nodeId ? [nodeId] : []
+              nodeIds: nodeId ? [nodeId] : [],
+              isOrphaned: false
+            });
+          }
+        } else {
+          // Orphaned variable binding - variable doesn't exist locally
+          var orphanKey = propType + ':' + key + ':' + alias.id;
+
+          var existingOrphan = orphanedMap.get(orphanKey);
+          if (existingOrphan) {
+            existingOrphan.nodeCount++;
+            if (nodeId && existingOrphan.nodeIds.indexOf(nodeId) === -1) {
+              existingOrphan.nodeIds.push(nodeId);
+              if (nodeName) {
+                existingOrphan.nodeNames.push(nodeName);
+              }
+            }
+          } else {
+            orphanedMap.set(orphanKey, {
+              propertyType: propType,
+              propertyKey: key,
+              variableId: alias.id,
+              nodeCount: 1,
+              nodeIds: nodeId ? [nodeId] : [],
+              nodeNames: nodeName ? [nodeName] : []
             });
           }
         }
@@ -311,6 +395,16 @@ function categorizeProperty(key: string): PropertyType {
   if (typographyProps.indexOf(key) !== -1) return 'typography';
   
   return 'other';
+}
+
+function getVariableTypeForProperty(propType: PropertyType): VariableResolvedDataType | null {
+  if (propType === 'fill' || propType === 'stroke' || propType === 'effect' || propType === 'text') {
+    return 'COLOR';
+  }
+  if (propType === 'spacing' || propType === 'cornerRadius' || propType === 'typography') {
+    return 'FLOAT';
+  }
+  return null;
 }
 
 async function handlePreviewRemap(
@@ -410,15 +504,19 @@ async function findVariableByName(name: string, collectionId: string): Promise<V
   return result;
 }
 
-async function handleGetCollectionVariables(collectionId: string): Promise<void> {
-  var variables: Array<{id: string, name: string}> = [];
+async function handleGetCollectionVariables(collectionId: string, variableType?: string): Promise<void> {
+  var variables: Array<{id: string, name: string, resolvedType: string}> = [];
   
   variableCache.forEach(function(variable) {
     if (variable.variableCollectionId === collectionId) {
-      variables.push({
-        id: variable.id,
-        name: variable.name
-      });
+      // Filter by type if specified
+      if (!variableType || variable.resolvedType === variableType) {
+        variables.push({
+          id: variable.id,
+          name: variable.name,
+          resolvedType: variable.resolvedType
+        });
+      }
     }
   });
 
@@ -430,6 +528,45 @@ async function handleGetCollectionVariables(collectionId: string): Promise<void>
     type: 'collection-variables',
     collectionId: collectionId,
     variables: variables
+  });
+}
+
+async function handleGetAllLocalVariables(): Promise<void> {
+  var variablesByCollection: Record<string, Array<{id: string, name: string, resolvedType: string}>> = {};
+  
+  collectionCache.forEach(function(collection) {
+    variablesByCollection[collection.id] = [];
+  });
+
+  variableCache.forEach(function(variable) {
+    if (variablesByCollection[variable.variableCollectionId]) {
+      variablesByCollection[variable.variableCollectionId].push({
+        id: variable.id,
+        name: variable.name,
+        resolvedType: variable.resolvedType
+      });
+    }
+  });
+
+  // Sort variables in each collection
+  Object.keys(variablesByCollection).forEach(function(collectionId) {
+    variablesByCollection[collectionId].sort(function(a, b) {
+      return a.name.localeCompare(b.name);
+    });
+  });
+
+  var collections: Array<{id: string, name: string}> = [];
+  collectionCache.forEach(function(collection) {
+    collections.push({
+      id: collection.id,
+      name: collection.name
+    });
+  });
+
+  figma.ui.postMessage({
+    type: 'all-local-variables',
+    collections: collections,
+    variablesByCollection: variablesByCollection
   });
 }
 
@@ -458,7 +595,8 @@ async function handleApplyRemap(remaps: RemapRequest[]): Promise<void> {
         oldVariableName: r.oldVariableName,
         newVariableId: r.newVariableId,
         newVariableName: r.newVariableName,
-        nodeIds: r.nodeIds.slice()
+        nodeIds: r.nodeIds.slice(),
+        isOrphaned: r.isOrphaned
       };
     })
   };
@@ -512,6 +650,78 @@ async function handleApplyRemap(remaps: RemapRequest[]): Promise<void> {
   figma.notify('Applied ' + appliedCount + ' variable remap' + (appliedCount !== 1 ? 's' : ''), { timeout: 2000 });
 }
 
+async function handleApplyOrphanRemap(
+  orphanedBinding: OrphanedBindingInfo,
+  newVariableId: string,
+  newVariableName: string
+): Promise<void> {
+  var newVariable = variableCache.get(newVariableId);
+  
+  if (!newVariable) {
+    figma.ui.postMessage({
+      type: 'error',
+      message: 'Variable not found: ' + newVariableId
+    });
+    return;
+  }
+
+  var appliedCount = 0;
+  var errors: string[] = [];
+
+  // Create history entry
+  var historyEntry: HistoryEntry = {
+    id: 'h_' + Date.now(),
+    timestamp: Date.now(),
+    description: 'Fixed orphaned ' + orphanedBinding.propertyType + ' binding',
+    remaps: [{
+      propertyKey: orphanedBinding.propertyKey,
+      propertyType: orphanedBinding.propertyType,
+      oldVariableId: orphanedBinding.variableId,
+      oldVariableName: '(orphaned)',
+      newVariableId: newVariableId,
+      newVariableName: newVariableName,
+      nodeIds: orphanedBinding.nodeIds.slice(),
+      isOrphaned: true
+    }]
+  };
+
+  for (var i = 0; i < orphanedBinding.nodeIds.length; i++) {
+    var nodeId = orphanedBinding.nodeIds[i];
+    try {
+      var node = await figma.getNodeByIdAsync(nodeId) as SceneNode;
+      if (!node) {
+        errors.push('Node not found: ' + nodeId);
+        continue;
+      }
+
+      await applyVariableToProperty(node, orphanedBinding.propertyKey, orphanedBinding.propertyType, newVariable);
+      appliedCount++;
+    } catch (err) {
+      errors.push('Error remapping ' + nodeId + '.' + orphanedBinding.propertyKey + ': ' + err);
+    }
+  }
+
+  if (appliedCount > 0) {
+    history = history.slice(0, historyIndex + 1);
+    history.push(historyEntry);
+    historyIndex = history.length - 1;
+    sendHistoryUpdate();
+  }
+
+  await handleScanSelection();
+
+  figma.ui.postMessage({
+    type: 'orphan-remap-complete',
+    result: {
+      success: errors.length === 0,
+      appliedCount: appliedCount,
+      errors: errors.length > 0 ? errors : undefined
+    }
+  });
+
+  figma.notify('Fixed ' + appliedCount + ' orphaned binding' + (appliedCount !== 1 ? 's' : ''), { timeout: 2000 });
+}
+
 async function handleUndo(): Promise<void> {
   if (historyIndex < 0) {
     figma.notify('Nothing to undo', { timeout: 1500 });
@@ -524,8 +734,15 @@ async function handleUndo(): Promise<void> {
   // Reverse the remaps (swap old and new)
   for (var i = 0; i < entry.remaps.length; i++) {
     var remap = entry.remaps[i];
-    var oldVariable = variableCache.get(remap.oldVariableId);
     
+    // For orphaned bindings, we can't really undo - the old variable doesn't exist
+    if (remap.isOrphaned) {
+      // We could try to unbind the variable, but that might not be what user wants
+      // For now, skip orphaned remaps in undo
+      continue;
+    }
+
+    var oldVariable = variableCache.get(remap.oldVariableId);
     if (!oldVariable) continue;
 
     for (var j = 0; j < remap.nodeIds.length; j++) {
