@@ -21,7 +21,6 @@ interface OrphanedBindingInfo {
   propertyType: PropertyType;
   propertyKey: string;
   variableId: string;
-  variableName: string;
   nodeCount: number;
   nodeIds: string[];
   nodeNames: string[];
