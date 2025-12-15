@@ -590,6 +590,7 @@ window.selectNodes = function(nodeIdString) {
       renderNestedInstances();
       updateFooter();
       updatePreviewStatus();
+      console.log('[Remapper] Scan complete:', currentBindings.length, 'bindings,', orphanedBindings.length, 'orphaned,', selectedBindingKeys.size, 'selected');
     }
 
     function handlePreviewResult(previews) {
@@ -599,6 +600,7 @@ window.selectNodes = function(nodeIdString) {
       renderBindings();
       updateFooter();
       updatePreviewStatus();
+      console.log('[Remapper] Preview result:', previewResults.size, 'previews, hasUnsaved:', hasUnsavedChanges);
     }
 
     function applyFindReplace() {
@@ -621,7 +623,15 @@ window.selectNodes = function(nodeIdString) {
     function renderBindings() {
       var container = document.getElementById('property-groups');
       var emptyState = document.getElementById('empty-state');
-      if (currentBindings.length === 0) { container.innerHTML = ''; container.appendChild(emptyState); emptyState.style.display = 'flex'; return; }
+      if (currentBindings.length === 0) { 
+        container.innerHTML = ''; 
+        container.appendChild(emptyState); 
+        emptyState.style.display = 'flex'; 
+        return; 
+      }
+      if (emptyState.parentNode) {
+        emptyState.parentNode.removeChild(emptyState);
+      }
       emptyState.style.display = 'none';
       var groups = {};
       propertyTypeOrder.forEach(function(type) { groups[type] = { label: propertyTypeLabels[type], items: [] }; });
