@@ -41,31 +41,11 @@ Perfect for scenarios like:
 6. Review the "Remapped To" column for validation
 7. Click "Apply X Changes" to commit
 
-## Screenshot
-
-```
-┌──────────────────────────────────────────────────────────────────────────────┐
-│ Variable Remapper                                                            │
-├──────────────────────────────────────────────────────────────────────────────┤
-│ Find: [brand      ]  Replace: [neutral    ]  [▶ Apply]                       │
-│ ☑ Whole segment only  ☑ Case sensitive                                       │
-├─────────────────────────────────┬────────────────────────────────────────────┤
-│ CURRENT                         │ REMAPPED TO                                │
-├─────────────────────────────────┴────────────────────────────────────────────┤
-│ ▼ Colors (8)                                                      Select All │
-│ ☑ button/brand/surface/enabled  │ button/neutral/surface/enabled ✓          │
-│ ☑ button/brand/surface/hover    │ button/neutral/surface/hover ✓            │
-│ ☐ button/brand/icon/tint        │ button/neutral/icon/tint ⚠                │
-├──────────────────────────────────────────────────────────────────────────────┤
-│ ▼ Spacing (3)                                                     Select All │
-│ ☑ spacing/button/padding-x      │ (no change)                               │
-├──────────────────────────────────────────────────────────────────────────────┤
-│ ℹ️ Nested instances (edit at component source)                                │
-│ • IconButton → IconButton (3 variables)                                      │
-├──────────────────────────────────────────────────────────────────────────────┤
-│ [☀️] 11 variables selected  ⚠ 1 target not found       [Apply 10 Changes]    │
-└──────────────────────────────────────────────────────────────────────────────┘
-```
+## Screenshots
+<img width="837" height="615" alt="image" src="https://github.com/user-attachments/assets/3dcd636a-4eec-4686-827e-265e8f8ffef5" />
+<img width="830" height="615" alt="image" src="https://github.com/user-attachments/assets/0a753e48-4804-454a-8408-e58bd40a144c" />
+<img width="837" height="615" alt="image" src="https://github.com/user-attachments/assets/b090f6d6-0d6f-4de7-838a-bd6a4a6fd71c" />
+<img width="837" height="615" alt="image" src="https://github.com/user-attachments/assets/41d53191-3a5a-4a56-ae6f-add3e581a8d4" />
 
 ## Development
 
