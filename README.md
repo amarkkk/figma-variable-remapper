@@ -42,10 +42,11 @@ Perfect for scenarios like:
 7. Click "Apply X Changes" to commit
 
 ## Screenshots
-<img width="837" height="615" alt="image" src="https://github.com/user-attachments/assets/3dcd636a-4eec-4686-827e-265e8f8ffef5" />
-<img width="830" height="615" alt="image" src="https://github.com/user-attachments/assets/0a753e48-4804-454a-8408-e58bd40a144c" />
-<img width="837" height="615" alt="image" src="https://github.com/user-attachments/assets/b090f6d6-0d6f-4de7-838a-bd6a4a6fd71c" />
-<img width="837" height="615" alt="image" src="https://github.com/user-attachments/assets/41d53191-3a5a-4a56-ae6f-add3e581a8d4" />
+
+<img width="774" height="697" alt="image" src="https://github.com/user-attachments/assets/dd9b1ff6-4528-4773-a51b-3ab86b0ac8eb" />
+<img width="774" height="697" alt="image" src="https://github.com/user-attachments/assets/e2afcf46-5275-4387-a0c6-dc50b19575db" />
+<img width="774" height="697" alt="image" src="https://github.com/user-attachments/assets/50db7097-1f05-4123-9b58-10f20eea5cf7" />
+<img width="774" height="697" alt="image" src="https://github.com/user-attachments/assets/4d3e71cc-fa6b-4dfa-b8d4-db09ff6141e8" />
 
 ## Development
 
