@@ -622,17 +622,10 @@ window.selectNodes = function(nodeIdString) {
 
     function renderBindings() {
       var container = document.getElementById('property-groups');
-      var emptyState = document.getElementById('empty-state');
       if (currentBindings.length === 0) { 
-        container.innerHTML = ''; 
-        container.appendChild(emptyState); 
-        emptyState.style.display = 'flex'; 
+        container.innerHTML = '<div class="empty-state" id="empty-state"><div class="empty-state-icon">🎯</div><div class="empty-state-title">Select a component</div><div class="empty-state-desc">Select one or more components to scan their bound variables</div></div>';
         return; 
       }
-      if (emptyState.parentNode) {
-        emptyState.parentNode.removeChild(emptyState);
-      }
-      emptyState.style.display = 'none';
       var groups = {};
       propertyTypeOrder.forEach(function(type) { groups[type] = { label: propertyTypeLabels[type], items: [] }; });
       currentBindings.forEach(function(b) { (groups[b.propertyType] || groups['other']).items.push(b); });
