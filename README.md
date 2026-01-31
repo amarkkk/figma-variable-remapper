@@ -1,74 +1,71 @@
 # Variable Remapper
 
-A Figma plugin for bulk reassigning variables using find-and-replace on variable paths.
+> Bulk reassign variables using find-and-replace on token paths.
+
+> **⚠️ Development Status**: This plugin is currently in development and not yet published to the Figma Community. Follow the installation instructions below to use it locally.
+
+> **🔒 Privacy**: This plugin operates entirely locally. No data is sent to external servers (`networkAccess: { allowedDomains: ["none"] }`).
 
 ## Use Case
 
-Perfect for scenarios like:
-- Duplicating Brand button components to create Neutral variants
-- Forking card components with different token mappings
-- Any workflow where you need to remap `button/brand/filled/surface/enabled` → `button/neutral/filled/surface/enabled`
+When creating component variants, you often need to swap entire token families. For example, duplicating a "Brand" button to create a "Neutral" variant requires remapping dozens of variables like `button/brand/filled/surface/enabled` -> `button/neutral/filled/surface/enabled`.
+
+Doing this manually in Figma is tedious - you'd need to rebind each variable individually. This plugin lets you find-and-replace across all bound variables in your selection at once.
+
+**Common scenarios:**
+- Creating button variants (Brand -> Neutral, Primary -> Secondary)
+- Forking card components with different color schemes
+- Bulk-updating components after token restructuring
 
 ## Features
 
-- **Auto-scan on selection**: Automatically scans selected components for bound variables
-- **Two-column preview**: See current variables and their remapped targets side-by-side
-- **Property grouping**: Variables grouped by type (Colors, Spacing, Corner Radius, Typography)
-- **Find & Replace**: Simple string replacement with options:
-  - Whole segment matching (only replace complete path segments between `/`)
-  - Case sensitivity toggle
-- **Validation**: Shows ✓ for found targets, ⚠ for missing targets
-- **Nested instance handling**: Flags nested instances that should be edited at source
-- **Single undo**: All changes from one "Apply" are undoable as a single action
-- **Dark/Light theme**: Toggle with the sun/moon button
-- **Resizable window**: Drag the corner to resize
+- **Auto-scan on selection** - Automatically scans selected components for bound variables
+- **Two-column preview** - See current variables and their remapped targets side-by-side
+- **Property grouping** - Variables grouped by type (fill, stroke, spacing, corner radius, typography)
+- **Find & Replace options** - Whole segment matching (only replace complete path segments between `/`) and case sensitivity toggle
+- **Validation indicators** - Shows ✓ for found targets, ⚠ for missing targets, unchanged for no match
+- **Orphaned variable detection** - Detects broken variable references and allows remapping to valid variables
+- **Node selection** - Click to select and zoom to nodes using a specific variable
+- **Undo/Redo with history** - All changes are tracked in a history panel; undo reverts all changes from a single apply
+- **Nested instance handling** - Flags nested instances that should be edited at their source component
+- **Dark/Light theme** - Toggle with the sun/moon button
+- **Resizable window** - Drag the corner to resize
 
 ## Installation
 
-1. Clone this repository
-2. Run `npm install`
-3. Run `npm run build` (or `npm run watch` for development)
-4. In Figma: Plugins → Development → Import plugin from manifest
-5. Select the `manifest.json` file
+1. Clone or download this repository
+2. In Figma Desktop: **Plugins -> Development -> Import plugin from manifest**
+3. Select the `manifest.json` file from this folder
 
 ## Usage
 
 1. Select one or more components in Figma
-2. Open the Variable Remapper plugin
-3. The plugin scans and displays all bound variables
+2. Run the plugin from **Plugins -> Development -> Variable Remapper**
+3. The plugin scans and displays all bound variables grouped by property type
 4. Enter find/replace terms (e.g., find: `brand`, replace: `neutral`)
-5. Click "▶ Apply" to preview changes
-6. Review the "Remapped To" column for validation
-7. Click "Apply X Changes" to commit
+5. Toggle options: **Whole segment** (match complete path segments) or **Case sensitive**
+6. Click **Preview** to see what will change
+7. Review the "Remapped To" column for validation status
+8. Click **Apply** to commit changes
+9. Use **Undo/Redo** buttons if needed
 
 ## Screenshots
 
-<img width="774" height="697" alt="image" src="https://github.com/user-attachments/assets/dd9b1ff6-4528-4773-a51b-3ab86b0ac8eb" />
-<img width="774" height="697" alt="image" src="https://github.com/user-attachments/assets/e2afcf46-5275-4387-a0c6-dc50b19575db" />
-<img width="774" height="697" alt="image" src="https://github.com/user-attachments/assets/50db7097-1f05-4123-9b58-10f20eea5cf7" />
-<img width="774" height="697" alt="image" src="https://github.com/user-attachments/assets/4d3e71cc-fa6b-4dfa-b8d4-db09ff6141e8" />
+<!-- Add screenshots here -->
 
-## Development
-
-```bash
-npm install
-npm run watch
-```
-
-Then import the plugin in Figma via Plugins → Development → Import plugin from manifest.
-
-## How It Works
-
-1. **Scan**: Reads `boundVariables` from all nodes in the selection, recursively
-2. **Preview**: Applies find/replace to variable names and checks if targets exist in the same collection
-3. **Apply**: Uses `setBoundVariable` and `setBoundVariableForPaint` to reassign variables
-
-## Limitations
+## Known Limitations
 
 - Only works with variables in the same collection (no cross-collection remapping)
 - Target variables must already exist (the plugin does not create new variables)
-- Nested component instances are flagged but not modified (edit at source)
+- Nested component instances are flagged but not modified - edit at the source component
+- Effect variable binding is not yet implemented
 
 ## License
 
 MIT
+
+## Author
+
+Created by [Márk Andrássy](https://github.com/amarkkk)
+
+Part of a collection of Figma plugins for design token management.
