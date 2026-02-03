@@ -1,8 +1,7 @@
 # Dependencies
 node_modules/
 
-# Build output
-code.js
+# Build artifacts (but not code.js - needed for plugin to work)
 code.js.map
 *.tsbuildinfo
 
