@@ -41,6 +41,22 @@
     .options-row { display: flex; gap: 16px; align-items: center; }
     .checkbox-label { display: flex; align-items: center; gap: 6px; cursor: pointer; font-size: 11px; color: var(--text-tertiary); }
     .checkbox-label input[type="checkbox"] { cursor: pointer; }
+
+    /* Target Collection Dropdown */
+    .target-collection-group { display: flex; align-items: center; gap: 6px; margin-left: auto; }
+    .collection-label { font-size: 11px; color: var(--text-tertiary); font-weight: 500; }
+    .collection-select {
+      padding: 4px 8px;
+      border: 1px solid var(--border-strong);
+      border-radius: 4px;
+      font-size: 11px;
+      background: var(--bg-primary);
+      color: var(--text-secondary);
+      cursor: pointer;
+      max-width: 180px;
+    }
+    .collection-select:focus { outline: none; border-color: var(--accent-primary); }
+    .collection-select:hover { border-color: var(--accent-primary); }
     
     /* Preview Status Row */
     .preview-status-row { 
@@ -143,16 +159,9 @@
       border-radius: 50%;
     }
     
-    /* Tooltips - Fixed overflow and wrapping */
-    .tooltip-wrapper {
-      position: relative;
-      display: inline-flex;
-    }
-    .tooltip {
-      position: absolute;
-      bottom: calc(100% + 8px);
-      left: 50%;
-      transform: translateX(-50%);
+    /* Global tooltip - positioned with JS */
+    #global-tooltip {
+      position: fixed;
       background: #1a1a1a;
       color: #ffffff;
       padding: 8px 12px;
@@ -161,7 +170,6 @@
       font-family: 'Inter', -apple-system, sans-serif;
       font-weight: 400;
       line-height: 1.4;
-      width: max-content;
       max-width: 240px;
       white-space: normal;
       text-align: center;
@@ -172,29 +180,14 @@
       pointer-events: none;
       box-shadow: 0 4px 12px rgba(0,0,0,0.3);
     }
-    .tooltip::after {
-      content: '';
-      position: absolute;
-      top: 100%;
-      left: 50%;
-      transform: translateX(-50%);
-      border: 6px solid transparent;
-      border-top-color: #1a1a1a;
-    }
-    .tooltip-wrapper:hover .tooltip {
+    #global-tooltip.visible {
       opacity: 1;
       visibility: visible;
     }
-    /* Tooltip position variants */
-    .tooltip-left {
-      left: auto;
-      right: 0;
-      transform: translateX(0);
-    }
-    .tooltip-left::after {
-      left: auto;
-      right: 12px;
-      transform: translateX(0);
+
+    /* Tooltip trigger styling */
+    .has-tooltip {
+      cursor: help;
     }
     
     /* Nested Instances */
@@ -414,6 +407,12 @@
         <div class="find-replace-row options-row">
           <label class="checkbox-label"><input type="checkbox" id="whole-segment-checkbox" checked><span>Whole segment only</span></label>
           <label class="checkbox-label"><input type="checkbox" id="case-sensitive-checkbox" checked><span>Case sensitive</span></label>
+          <div class="target-collection-group">
+            <label class="collection-label">Target:</label>
+            <select id="target-collection-select" class="collection-select">
+              <option value="same">Same collection</option>
+            </select>
+          </div>
         </div>
         <div class="preview-status-row hidden" id="preview-status-row">
           <span class="preview-status-success" id="preview-success-count"></span>
@@ -493,7 +492,10 @@
     </div>
   </div>
   <svg id="resize-corner" xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 256 256"><path d="M213.66,133.66l-80,80a8,8,0,0,1-11.32-11.32l80-80a8,8,0,0,1,11.32,11.32Zm-16-99.32a8,8,0,0,0-11.32,0l-152,152a8,8,0,0,0,11.32,11.32l152-152A8,8,0,0,0,197.66,34.34Z"></path></svg>
-  
+
+  <!-- Global tooltip element -->
+  <div id="global-tooltip"></div>
+
   <script>
     var currentBindings = [], orphanedBindings = [], selectedBindingKeys = new Set(), previewResults = new Map();
     var nestedInstances = [], localCollections = [], allLocalVariables = {};
@@ -522,6 +524,50 @@ window.selectNodes = function(nodeIdString) {
       document.getElementById('dialog-proceed').addEventListener('click', function() { document.getElementById('unsaved-dialog').classList.add('hidden'); hasUnsavedChanges = false; previewResults.clear(); parent.postMessage({ pluginMessage: { type: 'scan-selection' } }, '*'); });
       document.addEventListener('click', function(e) { if (activeOrphanPicker !== null && !e.target.closest('.variable-picker')) closeAllPickers(); });
       setupResizeHandle();
+      setupGlobalTooltip();
+    }
+
+    function setupGlobalTooltip() {
+      var tooltip = document.getElementById('global-tooltip');
+      document.addEventListener('mouseover', function(e) {
+        var target = e.target.closest('[data-tooltip]');
+        if (target) {
+          var text = target.getAttribute('data-tooltip');
+          tooltip.textContent = text;
+          tooltip.classList.add('visible');
+          positionTooltip(target, tooltip);
+        }
+      });
+      document.addEventListener('mouseout', function(e) {
+        var target = e.target.closest('[data-tooltip]');
+        if (target) {
+          tooltip.classList.remove('visible');
+        }
+      });
+    }
+
+    function positionTooltip(target, tooltip) {
+      var rect = target.getBoundingClientRect();
+      var tooltipRect = tooltip.getBoundingClientRect();
+
+      // Position above the element by default
+      var top = rect.top - tooltipRect.height - 8;
+      var left = rect.left + (rect.width / 2) - (tooltipRect.width / 2);
+
+      // If tooltip would go above viewport, position below
+      if (top < 4) {
+        top = rect.bottom + 8;
+      }
+
+      // Keep within horizontal bounds
+      if (left < 4) {
+        left = 4;
+      } else if (left + tooltipRect.width > window.innerWidth - 4) {
+        left = window.innerWidth - tooltipRect.width - 4;
+      }
+
+      tooltip.style.top = top + 'px';
+      tooltip.style.left = left + 'px';
     }
 
     function setupResizeHandle() {
@@ -569,13 +615,16 @@ window.selectNodes = function(nodeIdString) {
       selectedBindingKeys.clear();
       previewResults.clear();
       hasUnsavedChanges = false;
-      
+
       currentBindings.forEach(function(b) { selectedBindingKeys.add(getBindingKey(b)); });
-      
+
       // Update tab badges
       document.getElementById('tab-badge-variables').textContent = currentBindings.length;
       document.getElementById('tab-badge-orphaned').textContent = orphanedBindings.length;
-      
+
+      // Update target collection dropdown
+      updateTargetCollectionDropdown();
+
       // Request local variables if we have orphans
       if (orphanedBindings.length > 0) {
         parent.postMessage({ pluginMessage: { type: 'get-all-local-variables' } }, '*');
@@ -583,7 +632,7 @@ window.selectNodes = function(nodeIdString) {
         // Clear local variables if no orphans
         allLocalVariables = {};
       }
-      
+
       // Render everything
       renderBindings();
       renderOrphanedBindings();
@@ -591,6 +640,22 @@ window.selectNodes = function(nodeIdString) {
       updateFooter();
       updatePreviewStatus();
       console.log('[Remapper] Scan complete:', currentBindings.length, 'bindings,', orphanedBindings.length, 'orphaned,', selectedBindingKeys.size, 'selected');
+    }
+
+    function updateTargetCollectionDropdown() {
+      var select = document.getElementById('target-collection-select');
+      var currentValue = select.value;
+      select.innerHTML = '<option value="same">Same collection</option>';
+      localCollections.forEach(function(collection) {
+        var option = document.createElement('option');
+        option.value = collection.id;
+        option.textContent = collection.name;
+        select.appendChild(option);
+      });
+      // Restore selection if it still exists
+      if (currentValue && Array.from(select.options).some(function(opt) { return opt.value === currentValue; })) {
+        select.value = currentValue;
+      }
     }
 
     function handlePreviewResult(previews) {
@@ -607,7 +672,8 @@ window.selectNodes = function(nodeIdString) {
       var findText = document.getElementById('find-input').value.trim();
       if (!findText) return;
       var selectedBindings = currentBindings.filter(function(b) { return selectedBindingKeys.has(getBindingKey(b)); });
-      parent.postMessage({ pluginMessage: { type: 'preview-remap', findText: findText, replaceText: document.getElementById('replace-input').value.trim(), options: { wholeSegment: document.getElementById('whole-segment-checkbox').checked, caseSensitive: document.getElementById('case-sensitive-checkbox').checked }, selectedBindings: selectedBindings } }, '*');
+      var targetCollectionId = document.getElementById('target-collection-select').value;
+      parent.postMessage({ pluginMessage: { type: 'preview-remap', findText: findText, replaceText: document.getElementById('replace-input').value.trim(), options: { wholeSegment: document.getElementById('whole-segment-checkbox').checked, caseSensitive: document.getElementById('case-sensitive-checkbox').checked, targetCollectionId: targetCollectionId }, selectedBindings: selectedBindings } }, '*');
     }
 
     function applyChanges() {
@@ -638,10 +704,16 @@ window.selectNodes = function(nodeIdString) {
           var key = getBindingKey(binding), isSelected = selectedBindingKeys.has(key), preview = previewResults.get(key);
           var previewHtml = '<span class="status-unchanged">(no change)</span>', statusIcon = '';
           if (preview) {
-            if (preview.status === 'found') { previewHtml = '<span class="status-found">' + escapeHtml(preview.newVariableName) + '</span>'; statusIcon = '<span class="tooltip-wrapper"><span class="status-icon status-icon-success">✓</span><span class="tooltip">Ready to apply</span></span>'; }
-            else if (preview.status === 'not_found') { previewHtml = '<span class="status-not-found">' + escapeHtml(preview.newVariableName) + '</span>'; statusIcon = '<span class="tooltip-wrapper"><span class="status-icon status-icon-error">!</span><span class="tooltip tooltip-left">Variable not found</span></span>'; }
+            if (preview.status === 'found') {
+              previewHtml = '<span class="status-found">' + escapeHtml(preview.newVariableName) + '</span>';
+              statusIcon = '<span class="status-icon status-icon-success has-tooltip" data-tooltip="Ready to apply">✓</span>';
+            }
+            else if (preview.status === 'not_found') {
+              previewHtml = '<span class="status-not-found">' + escapeHtml(preview.newVariableName) + '</span>';
+              statusIcon = '<span class="status-icon status-icon-error has-tooltip" data-tooltip="Variable not found in target collection">!</span>';
+            }
           }
-          var countBadge = binding.nodeCount > 1 ? '<span class="tooltip-wrapper"><span class="binding-count">×' + binding.nodeCount + '</span><span class="tooltip">' + binding.nodeCount + ' elements</span></span>' : '';
+          var countBadge = binding.nodeCount > 1 ? '<span class="binding-count has-tooltip" data-tooltip="' + binding.nodeCount + ' elements use this binding">×' + binding.nodeCount + '</span>' : '';
           html += '<div class="binding-row"><div class="binding-cell"><input type="checkbox" class="binding-checkbox" ' + (isSelected ? 'checked' : '') + ' onchange="toggleBinding(\'' + key + '\')"><span class="binding-name" title="' + escapeHtml(binding.variableName) + '">' + escapeHtml(binding.variableName) + '</span>' + countBadge + '</div><div class="binding-cell"><span class="binding-preview">' + previewHtml + '</span>' + statusIcon + '</div></div>';
         });
         html += '</div></div>';

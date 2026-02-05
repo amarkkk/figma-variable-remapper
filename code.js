@@ -338,7 +338,17 @@ function handlePreviewRemap(findText, replaceText, options, selectedBindings) {
                 });
                 continue;
             }
-            var targetVariable = yield findVariableByName(newName, binding.collectionId);
+            // Determine which collection to search in:
+            // - If targetCollectionId is specified (not 'same' or empty), use that specific collection
+            // - Otherwise, search in the same collection as the source binding
+            var searchCollectionId;
+            if (options.targetCollectionId && options.targetCollectionId !== 'same') {
+                searchCollectionId = options.targetCollectionId;
+            }
+            else {
+                searchCollectionId = binding.collectionId;
+            }
+            var targetVariable = yield findVariableByName(newName, searchCollectionId);
             previews.push({
                 binding: binding,
                 newVariableName: newName,
@@ -384,7 +394,22 @@ function findVariableByName(name, collectionId) {
     return __awaiter(this, void 0, void 0, function* () {
         var result = null;
         variableCache.forEach(function (variable) {
-            if (variable.name === name && variable.variableCollectionId === collectionId) {
+            if (variable.name === name) {
+                // If collectionId is null, search across all collections
+                // If collectionId is specified, only match within that collection
+                if (collectionId === null || variable.variableCollectionId === collectionId) {
+                    result = variable;
+                }
+            }
+        });
+        return result;
+    });
+}
+function findVariableByNameInCollection(name, targetCollectionId) {
+    return __awaiter(this, void 0, void 0, function* () {
+        var result = null;
+        variableCache.forEach(function (variable) {
+            if (variable.name === name && variable.variableCollectionId === targetCollectionId) {
                 result = variable;
             }
         });

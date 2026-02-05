@@ -16,6 +16,7 @@ Doing this manually in Figma is tedious - you'd need to rebind each variable ind
 - Creating button variants (Brand -> Neutral, Primary -> Secondary)
 - Forking card components with different color schemes
 - Bulk-updating components after token restructuring
+- **Migrating variables between collections** (e.g., moving from a "primitives" collection to a "semantic" collection)
 
 ## Features
 
@@ -23,6 +24,7 @@ Doing this manually in Figma is tedious - you'd need to rebind each variable ind
 - **Two-column preview** - See current variables and their remapped targets side-by-side
 - **Property grouping** - Variables grouped by type (fill, stroke, spacing, corner radius, typography)
 - **Find & Replace options** - Whole segment matching (only replace complete path segments between `/`) and case sensitivity toggle
+- **Cross-collection remapping** - Remap variables to a different collection using the "Target" dropdown
 - **Validation indicators** - Shows ✓ for found targets, ⚠ for missing targets, unchanged for no match
 - **Orphaned variable detection** - Detects broken variable references and allows remapping to valid variables
 - **Node selection** - Click to select and zoom to nodes using a specific variable
@@ -44,10 +46,22 @@ Doing this manually in Figma is tedious - you'd need to rebind each variable ind
 3. The plugin scans and displays all bound variables grouped by property type
 4. Enter find/replace terms (e.g., find: `brand`, replace: `neutral`)
 5. Toggle options: **Whole segment** (match complete path segments) or **Case sensitive**
-6. Click **Preview** to see what will change
-7. Review the "Remapped To" column for validation status
-8. Click **Apply** to commit changes
-9. Use **Undo/Redo** buttons if needed
+6. **(Optional)** Select a target collection from the "Target" dropdown to remap to a different collection
+7. Click **Preview** to see what will change
+8. Review the "Remapped To" column for validation status
+9. Click **Apply** to commit changes
+10. Use **Undo/Redo** buttons if needed
+
+### Cross-Collection Remapping
+
+To remap variables from one collection to another:
+
+1. Select your components
+2. In the "Target" dropdown, choose the destination collection (instead of "Same collection")
+3. Enter your find/replace terms as usual
+4. Preview and apply
+
+This is useful when migrating from primitive tokens to semantic tokens, or when restructuring your design system across multiple collections.
 
 ## Screenshots
 
@@ -55,7 +69,6 @@ Doing this manually in Figma is tedious - you'd need to rebind each variable ind
 
 ## Known Limitations
 
-- Only works with variables in the same collection (no cross-collection remapping)
 - Target variables must already exist (the plugin does not create new variables)
 - Nested component instances are flagged but not modified - edit at the source component
 - Effect variable binding is not yet implemented

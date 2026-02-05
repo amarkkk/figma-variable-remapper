@@ -428,7 +428,7 @@ function getVariableTypeForProperty(propType: PropertyType): VariableResolvedDat
 async function handlePreviewRemap(
   findText: string,
   replaceText: string,
-  options: { wholeSegment: boolean; caseSensitive: boolean },
+  options: { wholeSegment: boolean; caseSensitive: boolean; targetCollectionId?: string },
   selectedBindings: BoundVariableInfo[]
 ): Promise<void> {
   if (!findText) {
@@ -464,7 +464,17 @@ async function handlePreviewRemap(
       continue;
     }
 
-    var targetVariable = await findVariableByName(newName, binding.collectionId);
+    // Determine which collection to search in:
+    // - If targetCollectionId is specified (not 'same' or empty), use that specific collection
+    // - Otherwise, search in the same collection as the source binding
+    var searchCollectionId: string | null;
+    if (options.targetCollectionId && options.targetCollectionId !== 'same') {
+      searchCollectionId = options.targetCollectionId;
+    } else {
+      searchCollectionId = binding.collectionId;
+    }
+
+    var targetVariable = await findVariableByName(newName, searchCollectionId);
 
     previews.push({
       binding: binding,
@@ -512,10 +522,24 @@ function escapeRegExp(str: string): string {
   return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
-async function findVariableByName(name: string, collectionId: string): Promise<Variable | null> {
+async function findVariableByName(name: string, collectionId: string | null): Promise<Variable | null> {
   var result: Variable | null = null;
   variableCache.forEach(function(variable) {
-    if (variable.name === name && variable.variableCollectionId === collectionId) {
+    if (variable.name === name) {
+      // If collectionId is null, search across all collections
+      // If collectionId is specified, only match within that collection
+      if (collectionId === null || variable.variableCollectionId === collectionId) {
+        result = variable;
+      }
+    }
+  });
+  return result;
+}
+
+async function findVariableByNameInCollection(name: string, targetCollectionId: string): Promise<Variable | null> {
+  var result: Variable | null = null;
+  variableCache.forEach(function(variable) {
+    if (variable.name === name && variable.variableCollectionId === targetCollectionId) {
       result = variable;
     }
   });
