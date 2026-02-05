@@ -138,6 +138,15 @@ figma.ui.onmessage = async function(msg: any) {
         await handleGetAllLocalVariables();
         break;
 
+      case 'get-node-info':
+        await handleGetNodeInfo(msg.nodeIds, msg.bindingKey);
+        break;
+
+      case 'refresh':
+        await refreshVariableCaches();
+        await handleScanSelection();
+        break;
+
       case 'resize':
         figma.ui.resize(msg.size.w, msg.size.h);
         break;
@@ -171,13 +180,30 @@ figma.on('selectionchange', function() {
 
 async function handleSelectNodes(nodeIds: string[]): Promise<void> {
   var nodes: SceneNode[] = [];
+  var targetPage: PageNode | null = null;
+
   for (var i = 0; i < nodeIds.length; i++) {
     var node = await figma.getNodeByIdAsync(nodeIds[i]) as SceneNode;
     if (node) {
       nodes.push(node);
+
+      // Find the page this node belongs to
+      var parent: BaseNode | null = node.parent;
+      while (parent && parent.type !== 'PAGE') {
+        parent = parent.parent;
+      }
+      if (parent && parent.type === 'PAGE') {
+        targetPage = parent as PageNode;
+      }
     }
   }
+
   if (nodes.length > 0) {
+    // Switch to the correct page if needed
+    if (targetPage && figma.currentPage.id !== targetPage.id) {
+      await figma.setCurrentPageAsync(targetPage);
+    }
+
     figma.currentPage.selection = nodes;
     figma.viewport.scrollAndZoomIntoView(nodes);
   }
@@ -896,6 +922,41 @@ async function applyVariableToProperty(
       // Some properties may not be bindable
     }
   }
+}
+
+async function handleGetNodeInfo(nodeIds: string[], bindingKey: string): Promise<void> {
+  var nodeInfo: Array<{id: string, name: string, type: string}> = [];
+
+  for (var i = 0; i < nodeIds.length; i++) {
+    try {
+      var node = await figma.getNodeByIdAsync(nodeIds[i]) as SceneNode;
+      if (node) {
+        nodeInfo.push({
+          id: node.id,
+          name: node.name,
+          type: node.type
+        });
+      } else {
+        nodeInfo.push({
+          id: nodeIds[i],
+          name: '(deleted)',
+          type: 'UNKNOWN'
+        });
+      }
+    } catch (err) {
+      nodeInfo.push({
+        id: nodeIds[i],
+        name: '(error)',
+        type: 'UNKNOWN'
+      });
+    }
+  }
+
+  figma.ui.postMessage({
+    type: 'node-info',
+    bindingKey: bindingKey,
+    nodeInfo: nodeInfo
+  });
 }
 
 async function refreshVariableCaches(): Promise<void> {

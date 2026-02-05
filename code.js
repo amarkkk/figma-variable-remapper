@@ -58,6 +58,13 @@ figma.ui.onmessage = function (msg) {
                 case 'get-all-local-variables':
                     yield handleGetAllLocalVariables();
                     break;
+                case 'get-node-info':
+                    yield handleGetNodeInfo(msg.nodeIds, msg.bindingKey);
+                    break;
+                case 'refresh':
+                    yield refreshVariableCaches();
+                    yield handleScanSelection();
+                    break;
                 case 'resize':
                     figma.ui.resize(msg.size.w, msg.size.h);
                     break;
@@ -89,13 +96,26 @@ figma.on('selectionchange', function () {
 function handleSelectNodes(nodeIds) {
     return __awaiter(this, void 0, void 0, function* () {
         var nodes = [];
+        var targetPage = null;
         for (var i = 0; i < nodeIds.length; i++) {
             var node = yield figma.getNodeByIdAsync(nodeIds[i]);
             if (node) {
                 nodes.push(node);
+                // Find the page this node belongs to
+                var parent = node.parent;
+                while (parent && parent.type !== 'PAGE') {
+                    parent = parent.parent;
+                }
+                if (parent && parent.type === 'PAGE') {
+                    targetPage = parent;
+                }
             }
         }
         if (nodes.length > 0) {
+            // Switch to the correct page if needed
+            if (targetPage && figma.currentPage.id !== targetPage.id) {
+                yield figma.setCurrentPageAsync(targetPage);
+            }
             figma.currentPage.selection = nodes;
             figma.viewport.scrollAndZoomIntoView(nodes);
         }
@@ -727,6 +747,42 @@ function applyVariableToProperty(node, propertyKey, propertyType, variable) {
                 // Some properties may not be bindable
             }
         }
+    });
+}
+function handleGetNodeInfo(nodeIds, bindingKey) {
+    return __awaiter(this, void 0, void 0, function* () {
+        var nodeInfo = [];
+        for (var i = 0; i < nodeIds.length; i++) {
+            try {
+                var node = yield figma.getNodeByIdAsync(nodeIds[i]);
+                if (node) {
+                    nodeInfo.push({
+                        id: node.id,
+                        name: node.name,
+                        type: node.type
+                    });
+                }
+                else {
+                    nodeInfo.push({
+                        id: nodeIds[i],
+                        name: '(deleted)',
+                        type: 'UNKNOWN'
+                    });
+                }
+            }
+            catch (err) {
+                nodeInfo.push({
+                    id: nodeIds[i],
+                    name: '(error)',
+                    type: 'UNKNOWN'
+                });
+            }
+        }
+        figma.ui.postMessage({
+            type: 'node-info',
+            bindingKey: bindingKey,
+            nodeInfo: nodeInfo
+        });
     });
 }
 function refreshVariableCaches() {

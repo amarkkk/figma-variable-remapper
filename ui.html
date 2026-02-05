@@ -59,12 +59,12 @@
     .collection-select:hover { border-color: var(--accent-primary); }
     
     /* Preview Status Row */
-    .preview-status-row { 
-      display: flex; 
-      gap: 12px; 
-      align-items: center; 
-      margin-top: 10px; 
-      padding-top: 10px; 
+    .preview-status-row {
+      display: flex;
+      gap: 12px;
+      align-items: center;
+      margin-top: 10px;
+      padding-top: 10px;
       border-top: 1px solid var(--border-medium);
       font-size: 11px;
     }
@@ -72,6 +72,64 @@
     .preview-status-success { color: var(--success-text); font-weight: 500; }
     .preview-status-error { color: var(--error-text); font-weight: 500; }
     .preview-status-info { color: var(--text-tertiary); }
+
+    /* Status Stepper */
+    .status-stepper {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+    }
+    .status-stepper-label {
+      cursor: pointer;
+    }
+    .status-stepper-label:hover {
+      text-decoration: underline;
+    }
+    .status-stepper-nav {
+      display: inline-flex;
+      align-items: center;
+      gap: 2px;
+      margin-left: 4px;
+    }
+    .status-nav-btn {
+      width: 16px;
+      height: 16px;
+      padding: 0;
+      border: 1px solid var(--border-strong);
+      border-radius: 3px;
+      background: var(--bg-secondary);
+      color: var(--text-secondary);
+      font-size: 8px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.15s ease;
+    }
+    .status-nav-btn:hover:not(:disabled) {
+      background: var(--accent-primary);
+      color: white;
+      border-color: var(--accent-primary);
+    }
+    .status-nav-btn:disabled {
+      opacity: 0.3;
+      cursor: not-allowed;
+    }
+    .status-nav-btn.success:hover:not(:disabled) {
+      background: var(--success-text);
+      border-color: var(--success-text);
+    }
+    .status-nav-btn.error:hover:not(:disabled) {
+      background: var(--error-text);
+      border-color: var(--error-text);
+    }
+    .status-nav-position {
+      font-size: 9px;
+      color: var(--text-tertiary);
+      padding: 0 2px;
+      min-width: 24px;
+      text-align: center;
+    }
     
     /* Buttons */
     .btn { padding: 6px 12px; border: 1px solid var(--border-strong); border-radius: 4px; font-size: 12px; font-weight: 500; cursor: pointer; background: var(--bg-secondary); color: var(--text-secondary); transition: all 0.15s ease; }
@@ -84,8 +142,25 @@
     /* Main Content */
     .main-content { flex: 1; display: flex; flex-direction: column; overflow: hidden; border: 1px solid var(--border-medium); border-radius: 6px; background: var(--bg-primary); }
     .columns-header { display: grid; grid-template-columns: 1fr 1fr; background: var(--bg-secondary); border-bottom: 1px solid var(--border-medium); font-size: 11px; font-weight: 600; color: var(--text-tertiary); text-transform: uppercase; letter-spacing: 0.5px; }
-    .columns-header > div { padding: 8px 12px; }
+    .columns-header > div { padding: 8px 12px; display: flex; align-items: center; justify-content: space-between; }
     .columns-header > div:first-child { border-right: 1px solid var(--border-medium); }
+    .accordion-controls { display: flex; gap: 4px; }
+    .accordion-ctrl-btn {
+      padding: 2px 6px;
+      font-size: 9px;
+      background: transparent;
+      border: 1px solid var(--border-strong);
+      border-radius: 3px;
+      cursor: pointer;
+      color: var(--text-tertiary);
+      text-transform: none;
+      letter-spacing: 0;
+      font-weight: 500;
+    }
+    .accordion-ctrl-btn:hover {
+      background: var(--bg-hover);
+      color: var(--text-secondary);
+    }
     
     /* Property Groups */
     .property-groups { flex: 1; overflow-y: auto; overflow-x: hidden; }
@@ -112,15 +187,15 @@
     .binding-name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--text-secondary); }
     
     /* Count Badge - Improved contrast */
-    .binding-count { 
-      font-size: 11px; 
+    .binding-count {
+      font-size: 11px;
       font-weight: 600;
-      color: var(--text-secondary); 
-      background: var(--bg-tertiary); 
-      padding: 2px 7px; 
-      border-radius: 10px; 
-      flex-shrink: 0; 
-      cursor: help;
+      color: var(--text-secondary);
+      background: var(--bg-tertiary);
+      padding: 2px 7px;
+      border-radius: 10px;
+      flex-shrink: 0;
+      cursor: pointer;
       border: 1px solid var(--border-strong);
       transition: all 0.15s ease;
     }
@@ -129,6 +204,61 @@
       color: white;
       border-color: var(--accent-primary);
     }
+
+    /* Element Navigator - for cycling through elements using a binding */
+    .element-navigator {
+      display: inline-flex;
+      align-items: center;
+      gap: 2px;
+      margin-left: 4px;
+      flex-shrink: 0;
+    }
+    .element-nav-btn {
+      width: 18px;
+      height: 18px;
+      padding: 0;
+      border: 1px solid var(--border-strong);
+      border-radius: 3px;
+      background: var(--bg-secondary);
+      color: var(--text-secondary);
+      font-size: 9px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.15s ease;
+    }
+    .element-nav-btn:hover:not(:disabled) {
+      background: var(--accent-primary);
+      color: white;
+      border-color: var(--accent-primary);
+    }
+    .element-nav-btn:disabled {
+      opacity: 0.3;
+      cursor: not-allowed;
+    }
+    .element-nav-info {
+      font-size: 10px;
+      color: var(--text-tertiary);
+      padding: 0 4px;
+      cursor: pointer;
+      min-width: 32px;
+      text-align: center;
+    }
+    .element-nav-info:hover {
+      color: var(--accent-primary);
+    }
+    .node-type-badge {
+      font-size: 8px;
+      font-weight: 600;
+      padding: 1px 4px;
+      border-radius: 3px;
+      text-transform: uppercase;
+      letter-spacing: 0.3px;
+    }
+    .node-type-badge.component { background: #9747ff; color: white; }
+    .node-type-badge.instance { background: #1bc47d; color: white; }
+    .node-type-badge.detached { background: #f24822; color: white; }
     
     .binding-preview { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .status-found { color: var(--success-text); }
@@ -421,7 +551,7 @@
         </div>
       </div>
       <div class="main-content">
-        <div class="columns-header"><div>Current Variable</div><div>Remapped To</div></div>
+        <div class="columns-header"><div><span>Current Variable</span><div class="accordion-controls"><button class="accordion-ctrl-btn" onclick="expandAllGroups()">Expand All</button><button class="accordion-ctrl-btn" onclick="collapseAllGroups()">Collapse All</button></div></div><div>Remapped To</div></div>
         <div class="property-groups" id="property-groups">
           <div class="empty-state" id="empty-state">
             <div class="empty-state-icon">🎯</div>
@@ -462,6 +592,10 @@
           <svg id="sun-icon" xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="currentColor" viewBox="0 0 256 256"><path d="M120,40V16a8,8,0,0,1,16,0V40a8,8,0,0,1-16,0Zm72,88a64,64,0,1,1-64-64A64.07,64.07,0,0,1,192,128Zm-16,0a48,48,0,1,0-48,48A48.05,48.05,0,0,0,176,128ZM58.34,69.66A8,8,0,0,0,69.66,58.34l-16-16A8,8,0,0,0,42.34,53.66Zm0,116.68-16,16a8,8,0,0,0,11.32,11.32l16-16a8,8,0,0,0-11.32-11.32ZM192,72a8,8,0,0,0,5.66-2.34l16-16a8,8,0,0,0-11.32-11.32l-16,16A8,8,0,0,0,192,72Zm5.66,114.34a8,8,0,0,0-11.32,11.32l16,16a8,8,0,0,0,11.32-11.32ZM48,128a8,8,0,0,0-8-8H16a8,8,0,0,0,0,16H40A8,8,0,0,0,48,128Zm80,80a8,8,0,0,0-8,8v24a8,8,0,0,0,16,0V216A8,8,0,0,0,128,208Zm112-88H216a8,8,0,0,0,0,16h24a8,8,0,0,0,0-16Z"></path></svg>
           <svg id="moon-icon" xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="currentColor" viewBox="0 0 256 256" style="display:none;"><path d="M233.54,142.23a8,8,0,0,0-8-2,88.08,88.08,0,0,1-109.8-109.8,8,8,0,0,0-10-10,104.84,104.84,0,0,0-52.91,37A104,104,0,0,0,136,224a103.09,103.09,0,0,0,62.52-20.88,104.84,104.84,0,0,0,37-52.91A8,8,0,0,0,233.54,142.23ZM188.9,190.34A88,88,0,0,1,65.66,67.11a89,89,0,0,1,31.4-26A106,106,0,0,0,96,56,104.11,104.11,0,0,0,200,160a106,106,0,0,0,14.92-1.06A89,89,0,0,1,188.9,190.34Z"></path></svg>
         </button>
+        <button class="icon-button" id="refresh-btn">
+          <span class="btn-tooltip">Refresh variables</span>
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 256 256"><path d="M224,48V96a8,8,0,0,1-8,8H168a8,8,0,0,1,0-16h28.69L182.06,73.37a79.56,79.56,0,0,0-56.13-23.43h-.45A79.52,79.52,0,0,0,69.59,72.71,8,8,0,0,1,58.41,61.27a96,96,0,0,1,135,.42L208,76.29V48a8,8,0,0,1,16,0ZM186.41,183.29a80,80,0,0,1-112.47-.42L59.31,168H88a8,8,0,0,0,0-16H40a8,8,0,0,0-8,8v48a8,8,0,0,0,16,0V179.71l14.63,14.63a95.43,95.43,0,0,0,67.74,28.15h.53a95.36,95.36,0,0,0,67.51-28,8,8,0,1,0-11.42-11.2Z"></path></svg>
+        </button>
         <span class="footer-stats" id="footer-stats">0 unique variables</span>
       </div>
       <div class="footer-right">
@@ -501,6 +635,11 @@
     var nestedInstances = [], localCollections = [], allLocalVariables = {};
     var hasUnsavedChanges = false, currentTheme = 'light', historyData = [], historyIndex = -1;
     var activeOrphanPicker = null;
+    var elementNavIndex = new Map(); // Track current index for each binding's element navigation
+    var bindingNodeInfo = new Map(); // Store node info (name, type) for each binding
+    var expandedGroups = new Set(); // Track which accordion groups are expanded (default: all collapsed)
+    var statusNavIndex = { found: -1, notFound: -1 }; // Track stepper position for found/not-found items
+    var statusBindingKeys = { found: [], notFound: [] }; // Cache of binding keys by status
 
     var propertyTypeLabels = { fill: 'Fill Colors', stroke: 'Stroke Colors', effect: 'Effect Colors', text: 'Text Colors', spacing: 'Spacing', cornerRadius: 'Corner Radius', typography: 'Typography', other: 'Other' };
     var propertyTypeOrder = ['fill', 'stroke', 'effect', 'text', 'spacing', 'cornerRadius', 'typography', 'other'];
@@ -516,6 +655,7 @@ window.selectNodes = function(nodeIdString) {
       document.getElementById('replace-input').addEventListener('keyup', function(e) { if (e.key === 'Enter') applyFindReplace(); });
       document.getElementById('apply-changes-btn').addEventListener('click', applyChanges);
       document.getElementById('theme-toggle').addEventListener('click', toggleTheme);
+      document.getElementById('refresh-btn').addEventListener('click', refreshVariables);
       document.getElementById('undo-btn').addEventListener('click', function() { parent.postMessage({ pluginMessage: { type: 'undo' } }, '*'); });
       document.getElementById('redo-btn').addEventListener('click', function() { parent.postMessage({ pluginMessage: { type: 'redo' } }, '*'); });
       document.getElementById('history-btn').addEventListener('click', function() { document.getElementById('history-panel').classList.toggle('visible'); });
@@ -586,6 +726,13 @@ window.selectNodes = function(nodeIdString) {
       document.getElementById('moon-icon').style.display = currentTheme === 'dark' ? 'block' : 'none';
     }
 
+    function refreshVariables() {
+      // Clear navigation state
+      elementNavIndex.clear();
+      bindingNodeInfo.clear();
+      parent.postMessage({ pluginMessage: { type: 'refresh' } }, '*');
+    }
+
     window.switchTab = function(tab) {
       document.querySelectorAll('.tab').forEach(function(t) { t.classList.remove('active'); });
       document.querySelectorAll('.tab-panel').forEach(function(p) { p.classList.remove('active'); });
@@ -603,6 +750,15 @@ window.selectNodes = function(nodeIdString) {
         case 'apply-complete': case 'orphan-remap-complete': hasUnsavedChanges = false; previewResults.clear(); document.getElementById('find-input').value = ''; document.getElementById('replace-input').value = ''; updatePreviewStatus(); break;
         case 'history-update': historyData = msg.history; historyIndex = msg.historyIndex; document.getElementById('undo-btn').disabled = msg.historyIndex < 0; document.getElementById('redo-btn').disabled = msg.historyIndex >= msg.history.length - 1; renderHistory(); break;
         case 'all-local-variables': allLocalVariables = msg.variablesByCollection; localCollections = msg.collections; break;
+        case 'node-info':
+          bindingNodeInfo.set(msg.bindingKey, msg.nodeInfo);
+          // Select first element and re-render
+          var binding = currentBindings.find(function(b) { return getBindingKey(b) === msg.bindingKey; });
+          if (binding && binding.nodeIds.length > 0) {
+            selectNodes(binding.nodeIds[0]);
+          }
+          renderBindings();
+          break;
       }
     };
 
@@ -699,7 +855,10 @@ window.selectNodes = function(nodeIdString) {
       propertyTypeOrder.forEach(function(type) {
         var group = groups[type];
         if (group.items.length === 0) return;
-        html += '<div class="property-group"><div class="property-group-header" onclick="toggleGroup(\'' + type + '\')"><div class="property-group-header-left"><span class="property-group-toggle" id="toggle-' + type + '">▼</span><span class="property-group-title">' + group.label + '</span><span class="property-group-count">(' + group.items.length + ')</span></div><button class="select-all-btn" onclick="event.stopPropagation(); toggleSelectAll(\'' + type + '\')">Select All</button></div><div class="property-group-items expanded" id="items-' + type + '">';
+        var isExpanded = expandedGroups.has(type);
+        var toggleIcon = isExpanded ? '▼' : '▶';
+        var expandedClass = isExpanded ? ' expanded' : '';
+        html += '<div class="property-group"><div class="property-group-header" onclick="toggleGroup(\'' + type + '\')"><div class="property-group-header-left"><span class="property-group-toggle" id="toggle-' + type + '">' + toggleIcon + '</span><span class="property-group-title">' + group.label + '</span><span class="property-group-count">(' + group.items.length + ')</span></div><button class="select-all-btn" onclick="event.stopPropagation(); toggleSelectAll(\'' + type + '\')">Select All</button></div><div class="property-group-items' + expandedClass + '" id="items-' + type + '">';
         group.items.forEach(function(binding) {
           var key = getBindingKey(binding), isSelected = selectedBindingKeys.has(key), preview = previewResults.get(key);
           var previewHtml = '<span class="status-unchanged">(no change)</span>', statusIcon = '';
@@ -713,8 +872,32 @@ window.selectNodes = function(nodeIdString) {
               statusIcon = '<span class="status-icon status-icon-error has-tooltip" data-tooltip="Variable not found in target collection">!</span>';
             }
           }
-          var countBadge = binding.nodeCount > 1 ? '<span class="binding-count has-tooltip" data-tooltip="' + binding.nodeCount + ' elements use this binding">×' + binding.nodeCount + '</span>' : '';
-          html += '<div class="binding-row"><div class="binding-cell"><input type="checkbox" class="binding-checkbox" ' + (isSelected ? 'checked' : '') + ' onchange="toggleBinding(\'' + key + '\')"><span class="binding-name" title="' + escapeHtml(binding.variableName) + '">' + escapeHtml(binding.variableName) + '</span>' + countBadge + '</div><div class="binding-cell"><span class="binding-preview">' + previewHtml + '</span>' + statusIcon + '</div></div>';
+          var countBadge = '';
+          var elementNav = '';
+          if (binding.nodeCount > 1) {
+            countBadge = '<span class="binding-count has-tooltip" data-tooltip="' + binding.nodeCount + ' elements use this binding. Click to cycle through." onclick="event.stopPropagation(); showElementNavigator(\'' + key + '\')">×' + binding.nodeCount + '</span>';
+            // Check if navigator is active for this binding
+            if (elementNavIndex.has(key)) {
+              var navIdx = elementNavIndex.get(key);
+              var total = binding.nodeIds.length;
+              var nodeInfo = bindingNodeInfo.get(key);
+              var typeBadge = '';
+              if (nodeInfo && nodeInfo[navIdx]) {
+                var info = nodeInfo[navIdx];
+                var badgeType = (info.type === 'COMPONENT' || info.type === 'COMPONENT_SET') ? 'component' : (info.type === 'INSTANCE' ? 'instance' : 'detached');
+                typeBadge = '<span class="node-type-badge ' + badgeType + '">' + info.type.substring(0, 4) + '</span>';
+              }
+              elementNav = '<div class="element-navigator" data-key="' + key + '">' +
+                '<button class="element-nav-btn prev" ' + (navIdx === 0 ? 'disabled' : '') + ' onclick="event.stopPropagation(); navigateElement(\'' + key + '\', -1)">◀</button>' +
+                '<span class="element-nav-info" onclick="event.stopPropagation(); selectCurrentElement(\'' + key + '\')">' + (navIdx + 1) + '/' + total + '</span>' +
+                typeBadge +
+                '<button class="element-nav-btn next" ' + (navIdx === total - 1 ? 'disabled' : '') + ' onclick="event.stopPropagation(); navigateElement(\'' + key + '\', 1)">▶</button>' +
+                '</div>';
+            }
+          } else if (binding.nodeCount === 1) {
+            countBadge = '<span class="binding-count has-tooltip" data-tooltip="1 element uses this binding. Click to select." onclick="event.stopPropagation(); selectNodes(\'' + binding.nodeIds[0] + '\')">×1</span>';
+          }
+          html += '<div class="binding-row"><div class="binding-cell"><input type="checkbox" class="binding-checkbox" ' + (isSelected ? 'checked' : '') + ' onchange="toggleBinding(\'' + key + '\')"><span class="binding-name" title="' + escapeHtml(binding.variableName) + '">' + escapeHtml(binding.variableName) + '</span>' + countBadge + elementNav + '</div><div class="binding-cell"><span class="binding-preview">' + previewHtml + '</span>' + statusIcon + '</div></div>';
         });
         html += '</div></div>';
       });
@@ -813,14 +996,63 @@ window.selectNodes = function(nodeIdString) {
 
     function updatePreviewStatus() {
       var row = document.getElementById('preview-status-row');
-      if (previewResults.size === 0) { row.classList.add('hidden'); return; }
+      if (previewResults.size === 0) { row.classList.add('hidden'); statusBindingKeys = { found: [], notFound: [] }; return; }
       row.classList.remove('hidden');
-      var found = 0, notFound = 0;
-      previewResults.forEach(function(p, k) { if (selectedBindingKeys.has(k)) { if (p.status === 'found') found++; else if (p.status === 'not_found') notFound++; } });
-      document.getElementById('preview-success-count').textContent = found > 0 ? '✓ ' + found + ' ready' : '';
-      document.getElementById('preview-success-count').style.display = found > 0 ? 'inline' : 'none';
-      document.getElementById('preview-error-count').textContent = notFound > 0 ? '⚠ ' + notFound + ' not found' : '';
-      document.getElementById('preview-error-count').style.display = notFound > 0 ? 'inline' : 'none';
+
+      // Collect binding keys by status
+      statusBindingKeys.found = [];
+      statusBindingKeys.notFound = [];
+      previewResults.forEach(function(p, k) {
+        if (selectedBindingKeys.has(k)) {
+          if (p.status === 'found') statusBindingKeys.found.push(k);
+          else if (p.status === 'not_found') statusBindingKeys.notFound.push(k);
+        }
+      });
+
+      var found = statusBindingKeys.found.length;
+      var notFound = statusBindingKeys.notFound.length;
+
+      // Reset nav index if out of bounds
+      if (statusNavIndex.found >= found) statusNavIndex.found = found > 0 ? 0 : -1;
+      if (statusNavIndex.notFound >= notFound) statusNavIndex.notFound = notFound > 0 ? 0 : -1;
+
+      // Build success stepper HTML
+      var successEl = document.getElementById('preview-success-count');
+      if (found > 0) {
+        var foundIdx = statusNavIndex.found;
+        var foundPos = foundIdx >= 0 ? (foundIdx + 1) + '/' + found : '';
+        successEl.innerHTML = '<span class="status-stepper">' +
+          '<span class="status-stepper-label" onclick="navigateStatus(\'found\', 0)">✓ ' + found + ' ready</span>' +
+          '<span class="status-stepper-nav">' +
+            '<button class="status-nav-btn success" onclick="navigateStatus(\'found\', -1)" ' + (foundIdx <= 0 ? 'disabled' : '') + '>◀</button>' +
+            '<span class="status-nav-position">' + foundPos + '</span>' +
+            '<button class="status-nav-btn success" onclick="navigateStatus(\'found\', 1)" ' + (foundIdx >= found - 1 ? 'disabled' : '') + '>▶</button>' +
+          '</span>' +
+        '</span>';
+        successEl.style.display = 'inline-flex';
+      } else {
+        successEl.innerHTML = '';
+        successEl.style.display = 'none';
+      }
+
+      // Build error stepper HTML
+      var errorEl = document.getElementById('preview-error-count');
+      if (notFound > 0) {
+        var notFoundIdx = statusNavIndex.notFound;
+        var notFoundPos = notFoundIdx >= 0 ? (notFoundIdx + 1) + '/' + notFound : '';
+        errorEl.innerHTML = '<span class="status-stepper">' +
+          '<span class="status-stepper-label" onclick="navigateStatus(\'notFound\', 0)">⚠ ' + notFound + ' not found</span>' +
+          '<span class="status-stepper-nav">' +
+            '<button class="status-nav-btn error" onclick="navigateStatus(\'notFound\', -1)" ' + (notFoundIdx <= 0 ? 'disabled' : '') + '>◀</button>' +
+            '<span class="status-nav-position">' + notFoundPos + '</span>' +
+            '<button class="status-nav-btn error" onclick="navigateStatus(\'notFound\', 1)" ' + (notFoundIdx >= notFound - 1 ? 'disabled' : '') + '>▶</button>' +
+          '</span>' +
+        '</span>';
+        errorEl.style.display = 'inline-flex';
+      } else {
+        errorEl.innerHTML = '';
+        errorEl.style.display = 'none';
+      }
     }
 
     function updateFooter() {
@@ -833,9 +1065,152 @@ window.selectNodes = function(nodeIdString) {
 
     function getBindingKey(b) { return b.propertyType + ':' + b.propertyKey + ':' + b.variableId; }
     function escapeHtml(s) { var d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
-    window.toggleGroup = function(type) { var items = document.getElementById('items-' + type); var toggle = document.getElementById('toggle-' + type); items.classList.toggle('expanded'); toggle.textContent = items.classList.contains('expanded') ? '▼' : '▶'; };
+    window.toggleGroup = function(type) {
+      if (expandedGroups.has(type)) {
+        expandedGroups.delete(type);
+      } else {
+        expandedGroups.add(type);
+      }
+      var items = document.getElementById('items-' + type);
+      var toggle = document.getElementById('toggle-' + type);
+      if (items && toggle) {
+        items.classList.toggle('expanded');
+        toggle.textContent = items.classList.contains('expanded') ? '▼' : '▶';
+      }
+    };
+
+    window.expandAllGroups = function() {
+      propertyTypeOrder.forEach(function(type) {
+        expandedGroups.add(type);
+        var items = document.getElementById('items-' + type);
+        var toggle = document.getElementById('toggle-' + type);
+        if (items) items.classList.add('expanded');
+        if (toggle) toggle.textContent = '▼';
+      });
+    };
+
+    window.collapseAllGroups = function() {
+      expandedGroups.clear();
+      propertyTypeOrder.forEach(function(type) {
+        var items = document.getElementById('items-' + type);
+        var toggle = document.getElementById('toggle-' + type);
+        if (items) items.classList.remove('expanded');
+        if (toggle) toggle.textContent = '▶';
+      });
+    };
+
+    window.navigateStatus = function(statusType, direction) {
+      var keys = statusType === 'found' ? statusBindingKeys.found : statusBindingKeys.notFound;
+      if (keys.length === 0) return;
+
+      var currentIdx = statusType === 'found' ? statusNavIndex.found : statusNavIndex.notFound;
+
+      // Handle initial click on label (direction 0) - start at first item
+      if (direction === 0 && currentIdx < 0) {
+        currentIdx = 0;
+      } else if (direction !== 0) {
+        currentIdx = currentIdx + direction;
+      }
+
+      // Bounds check
+      if (currentIdx < 0) currentIdx = 0;
+      if (currentIdx >= keys.length) currentIdx = keys.length - 1;
+
+      // Update index
+      if (statusType === 'found') {
+        statusNavIndex.found = currentIdx;
+      } else {
+        statusNavIndex.notFound = currentIdx;
+      }
+
+      // Get the binding key and find the binding
+      var bindingKey = keys[currentIdx];
+      var binding = currentBindings.find(function(b) { return getBindingKey(b) === bindingKey; });
+
+      if (binding) {
+        // Expand the group containing this binding
+        expandedGroups.add(binding.propertyType);
+
+        // Re-render to update accordion state
+        renderBindings();
+
+        // Scroll to the binding row
+        setTimeout(function() {
+          scrollToBinding(bindingKey);
+        }, 50);
+
+        // Update the status display
+        updatePreviewStatus();
+      }
+    };
+
+    function scrollToBinding(bindingKey) {
+      // Find the row by looking for the checkbox with this key
+      var checkboxes = document.querySelectorAll('.binding-checkbox');
+      for (var i = 0; i < checkboxes.length; i++) {
+        var checkbox = checkboxes[i];
+        var onchange = checkbox.getAttribute('onchange');
+        if (onchange && onchange.indexOf(bindingKey) !== -1) {
+          var row = checkbox.closest('.binding-row');
+          if (row) {
+            row.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            // Add a brief highlight effect
+            row.style.transition = 'background 0.3s ease';
+            row.style.background = 'var(--accent-primary)';
+            row.style.opacity = '0.3';
+            (function(r) {
+              setTimeout(function() {
+                r.style.background = '';
+                r.style.opacity = '';
+              }, 500);
+            })(row);
+          }
+          break;
+        }
+      }
+    }
     window.toggleSelectAll = function(type) { var group = currentBindings.filter(function(b) { return b.propertyType === type; }); var allSel = group.every(function(b) { return selectedBindingKeys.has(getBindingKey(b)); }); group.forEach(function(b) { var k = getBindingKey(b); if (allSel) selectedBindingKeys.delete(k); else selectedBindingKeys.add(k); }); renderBindings(); updateFooter(); updatePreviewStatus(); };
     window.toggleBinding = function(key) { if (selectedBindingKeys.has(key)) selectedBindingKeys.delete(key); else selectedBindingKeys.add(key); updateFooter(); updatePreviewStatus(); };
+
+    // Element Navigator functions
+    window.showElementNavigator = function(key) {
+      var binding = currentBindings.find(function(b) { return getBindingKey(b) === key; });
+      if (!binding || binding.nodeCount < 2) return;
+
+      // Toggle navigator visibility
+      if (elementNavIndex.has(key)) {
+        elementNavIndex.delete(key);
+        bindingNodeInfo.delete(key);
+        renderBindings();
+      } else {
+        elementNavIndex.set(key, 0);
+        // Request node info from backend
+        parent.postMessage({ pluginMessage: { type: 'get-node-info', nodeIds: binding.nodeIds, bindingKey: key } }, '*');
+      }
+    };
+
+    window.navigateElement = function(key, direction) {
+      var binding = currentBindings.find(function(b) { return getBindingKey(b) === key; });
+      if (!binding) return;
+
+      var currentIdx = elementNavIndex.get(key) || 0;
+      var newIdx = currentIdx + direction;
+
+      if (newIdx >= 0 && newIdx < binding.nodeIds.length) {
+        elementNavIndex.set(key, newIdx);
+        selectNodes(binding.nodeIds[newIdx]);
+        renderBindings();
+      }
+    };
+
+    window.selectCurrentElement = function(key) {
+      var binding = currentBindings.find(function(b) { return getBindingKey(b) === key; });
+      if (!binding) return;
+
+      var currentIdx = elementNavIndex.get(key) || 0;
+      selectNodes(binding.nodeIds[currentIdx]);
+    };
+
     init();
   </script>
 </body>
